@@ -85,7 +85,7 @@
 ### Functional Requirements
 
 - **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]
-- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]  
+- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]
 - **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
@@ -94,6 +94,33 @@
 
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
 - **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
+
+### Privacy & Security Requirements (FlowConvert Specific)
+
+- **PS-001**: Processing MUST be client-side unless [specify reason: DOCX/PDF conversion, HEIC, video, etc.]
+- **PS-002**: If server-side, files MUST be encrypted (AES-256) and deleted within 5 minutes
+- **PS-003**: Privacy indicator MUST show users whether processing is client-side or server-side
+- **PS-004**: NO logging of file contents, filenames, or metadata
+- **PS-005**: NO third-party tracking or analytics that compromise privacy
+- **PS-006**: EXIF/metadata removal options MUST be user-controlled
+
+### User Experience Requirements (FlowConvert Specific)
+
+- **UX-001**: Conversion flow MUST complete in maximum 3 clicks
+- **UX-002**: User actions MUST show visual response within 100ms
+- **UX-003**: Before/after preview REQUIRED for conversions affecting quality
+- **UX-004**: Error messages MUST be actionable (no "Something went wrong")
+- **UX-005**: Interface MUST be WCAG 2.1 AA compliant minimum
+- **UX-006**: Mobile-first design with 44px minimum touch targets
+
+### Quality & Performance Requirements (FlowConvert Specific)
+
+- **QP-001**: Original quality preservation MUST be the default
+- **QP-002**: Quality degradation MUST be user-controlled with preview
+- **QP-003**: File size limits: Free (50MB/file, 5 batch), Premium (500MB/file, 25 batch)
+- **QP-004**: Client conversions MUST complete in <3s for 10MB image
+- **QP-005**: Server conversions MUST complete in <30s for 50MB file
+- **QP-006**: Page load: FCP <1.5s, TTI <3.5s
 
 ### Key Entities *(include if feature involves data)*
 

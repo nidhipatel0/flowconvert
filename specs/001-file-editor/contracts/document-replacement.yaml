@@ -1,0 +1,687 @@
+openapi: 3.0.3
+info:
+  title: FlowConvert Document Replacement API
+  description: |
+    API for detecting and replacing personal/academic fields in documents.
+    Supports DOCX, PDF, PPT files with user profile management.
+
+    **Phase 1**: Server-side field detection and replacement (encrypted, auto-deleted)
+    **Phase 2**: Client-side processing using docx.js for offline capability
+  version: 1.0.0
+
+servers:
+  - url: https://api.flowconvert.com/v1
+    description: Production API
+  - url: http://localhost:3000/api
+    description: Local development
+
+tags:
+  - name: Field Detection
+    description: Automatic detection of personal/academic fields in documents
+  - name: Field Replacement
+    description: Replace detected fields with user-provided values
+  - name: User Profiles
+    description: Manage saved user profiles (localStorage, browser-only)
+
+paths:
+  /document/detect-fields:
+    post:
+      tags:
+        - Field Detection
+      summary: Detect fields in uploaded document
+      description: |
+        Automatically detect common personal/academic fields in DOCX/PDF/PPT files.
+        Uses regex patterns and LibreOffice/Apache POI for text extraction.
+        Detection confidence <0.5 flagged for manual review.
+      operationId: detectFields
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fileId
+              properties:
+                fileId:
+                  type: string
+                  format: uuid
+                  description: File ID from upload endpoint
+                fieldTypes:
+                  type: array
+                  description: Specific field types to detect (default = all)
+                  items:
+                    type: string
+                    enum: [NAME, ROLL_NUMBER, EMAIL, PHONE, CLASS, SECTION, DESIGNATION, EMPLOYEE_ID, STUDENT_ID]
+                detectionAreas:
+                  type: string
+                  enum: [all, header-footer, title-areas, custom]
+                  default: header-footer
+                  description: Where to search for fields
+      responses:
+        '200':
+          description: Fields detected successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - fileId
+                  - detectedAt
+                  - fields
+                  - summary
+                properties:
+                  fileId:
+                    type: string
+                    format: uuid
+                  detectedAt:
+                    type: string
+                    format: date-time
+                  fields:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DetectedField'
+                  summary:
+                    type: object
+                    properties:
+                      totalDetected:
+                        type: integer
+                        description: Total fields detected
+                      highConfidence:
+                        type: integer
+                        description: Fields with confidence >= 0.5
+                      lowConfidence:
+                        type: integer
+                        description: Fields with confidence < 0.5 (needs review)
+                      fieldTypeBreakdown:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                        example:
+                          NAME: 2
+                          ROLL_NUMBER: 1
+                          EMAIL: 1
+                          PHONE: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: File not found or expired
+        '504':
+          description: Detection timeout (>10s limit per FR-047)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: DETECTION_TIMEOUT
+                message: "Field detection exceeded 10 second limit for 50MB file"
+
+  /document/replace-fields:
+    post:
+      tags:
+        - Field Replacement
+      summary: Replace fields in document
+      description: |
+        Replace detected fields with user-provided values.
+        Returns modified document for download.
+        Original file auto-deleted after replacement.
+      operationId: replaceFields
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fileId
+                - replacements
+              properties:
+                fileId:
+                  type: string
+                  format: uuid
+                replacements:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: '#/components/schemas/FieldReplacement'
+                preserveFormatting:
+                  type: boolean
+                  default: true
+                  description: Preserve font, size, color, alignment
+      responses:
+        '200':
+          description: Fields replaced successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - downloadUrl
+                  - processedAt
+                  - replacementSummary
+                properties:
+                  downloadUrl:
+                    type: string
+                    format: uri
+                    description: Temporary URL to download modified document (expires in 5 min)
+                  processedAt:
+                    type: string
+                    format: date-time
+                  replacementSummary:
+                    type: object
+                    properties:
+                      totalReplacements:
+                        type: integer
+                      fieldTypeBreakdown:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                      skipped:
+                        type: integer
+                        description: Fields user chose to skip
+                      warnings:
+                        type: array
+                        items:
+                          type: string
+                        description: Non-fatal warnings (e.g., "Formatting slightly altered in paragraph 5")
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: File not found or expired
+
+  /document/preview-replacements:
+    post:
+      tags:
+        - Field Replacement
+      summary: Preview replacements without committing
+      description: |
+        Generate preview of document with highlighted replacements.
+        Does not modify original file.
+        Used for "before/after" comparison view.
+      operationId: previewReplacements
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fileId
+                - replacements
+              properties:
+                fileId:
+                  type: string
+                  format: uuid
+                replacements:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/FieldReplacement'
+      responses:
+        '200':
+          description: Preview generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - previewUrl
+                  - highlightedFields
+                properties:
+                  previewUrl:
+                    type: string
+                    format: uri
+                    description: Temporary preview URL (PDF rendering)
+                  highlightedFields:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        fieldId:
+                          type: string
+                          format: uuid
+                        page:
+                          type: integer
+                        coordinates:
+                          type: object
+                          properties:
+                            x:
+                              type: integer
+                            y:
+                              type: integer
+                            width:
+                              type: integer
+                            height:
+                              type: integer
+                        color:
+                          type: string
+                          description: Highlight color
+                          example: "#FFEB3B"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /profiles:
+    get:
+      tags:
+        - User Profiles
+      summary: List all user profiles
+      description: |
+        PRIVACY: Profiles stored in browser localStorage only.
+        This endpoint returns profiles from localStorage (client-side).
+        Server does NOT store or track profiles.
+      operationId: listProfiles
+      responses:
+        '200':
+          description: Profiles retrieved from localStorage
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserProfile'
+      x-client-side: true
+      x-storage: localStorage
+
+    post:
+      tags:
+        - User Profiles
+      summary: Create new user profile
+      description: |
+        Create and save profile to localStorage.
+        Max 10 profiles per user (client-side limit).
+      operationId: createProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - fields
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  description: Profile name (e.g., "Jane Smith - Student")
+                  example: "Jane Smith - Student"
+                fields:
+                  $ref: '#/components/schemas/ProfileFields'
+                isDefault:
+                  type: boolean
+                  default: false
+                  description: Auto-select on page load
+      responses:
+        '201':
+          description: Profile created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          description: Profile limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: PROFILE_LIMIT_EXCEEDED
+                message: "Maximum 10 profiles allowed (localStorage limit)"
+      x-client-side: true
+      x-storage: localStorage
+
+  /profiles/{profileId}:
+    get:
+      tags:
+        - User Profiles
+      summary: Get profile by ID
+      operationId: getProfile
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-client-side: true
+
+    put:
+      tags:
+        - User Profiles
+      summary: Update profile
+      operationId: updateProfile
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                fields:
+                  $ref: '#/components/schemas/ProfileFields'
+                isDefault:
+                  type: boolean
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-client-side: true
+
+    delete:
+      tags:
+        - User Profiles
+      summary: Delete profile
+      operationId: deleteProfile
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Profile deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-client-side: true
+
+  /profiles/{profileId}/set-default:
+    post:
+      tags:
+        - User Profiles
+      summary: Set profile as default
+      description: |
+        Set profile as default (auto-selected on page load).
+        Unsets any previously default profile.
+      operationId: setDefaultProfile
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Default profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-client-side: true
+
+components:
+  schemas:
+    DetectedField:
+      type: object
+      required:
+        - id
+        - type
+        - originalValue
+        - position
+        - confidence
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique field identifier
+        type:
+          type: string
+          enum: [NAME, ROLL_NUMBER, EMAIL, PHONE, CLASS, SECTION, DESIGNATION, EMPLOYEE_ID, STUDENT_ID, CUSTOM]
+          description: Field type classification
+        originalValue:
+          type: string
+          description: Text found in document
+          example: "John Doe"
+        newValue:
+          type: string
+          description: User's replacement value (if edited)
+          example: "Jane Smith"
+        position:
+          type: object
+          description: Field location in document
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              description: Page number (for multi-page docs)
+            paragraph:
+              type: integer
+              description: Paragraph index
+            x:
+              type: integer
+              description: X coordinate (pixels, for PDF/PPT)
+            y:
+              type: integer
+              description: Y coordinate (pixels, for PDF/PPT)
+            width:
+              type: integer
+              description: Field width (pixels)
+            height:
+              type: integer
+              description: Field height (pixels)
+        confidence:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Detection confidence score (0.0-1.0, <0.5 = needs review)
+          example: 0.85
+        status:
+          type: string
+          enum: [DETECTED, EDITED, REPLACED, SKIPPED]
+          description: Field processing status
+          default: DETECTED
+        metadata:
+          type: object
+          description: Additional field metadata
+          properties:
+            fontFamily:
+              type: string
+              example: "Arial"
+            fontSize:
+              type: integer
+              example: 12
+            fontColor:
+              type: string
+              example: "#000000"
+            bold:
+              type: boolean
+            italic:
+              type: boolean
+            alignment:
+              type: string
+              enum: [left, center, right, justify]
+
+    FieldReplacement:
+      type: object
+      required:
+        - fieldId
+        - newValue
+      properties:
+        fieldId:
+          type: string
+          format: uuid
+          description: ID from DetectedField
+        newValue:
+          type: string
+          minLength: 1
+          description: Replacement text
+        action:
+          type: string
+          enum: [replace, skip]
+          default: replace
+          description: Action to perform on field
+
+    UserProfile:
+      type: object
+      required:
+        - id
+        - name
+        - fields
+        - createdAt
+        - updatedAt
+        - isDefault
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Profile name
+          example: "Jane Smith - Computer Science Student"
+        fields:
+          $ref: '#/components/schemas/ProfileFields'
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-11-06T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-11-06T10:30:00Z"
+        isDefault:
+          type: boolean
+          description: Auto-select this profile on page load
+          example: true
+
+    ProfileFields:
+      type: object
+      description: Personal/academic/professional field values
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          example: "Jane Smith"
+        rollNumber:
+          type: string
+          pattern: '^[A-Za-z0-9]+$'
+          maxLength: 50
+          description: Alphanumeric only
+          example: "CS2025001"
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: "jane.smith@university.edu"
+        phone:
+          type: string
+          pattern: '^[0-9]{10}$'
+          description: 10-digit Indian phone number
+          example: "9876543210"
+        class:
+          type: string
+          maxLength: 100
+          example: "Bachelor of Computer Science - Year 3"
+        section:
+          type: string
+          maxLength: 50
+          example: "Section A"
+        designation:
+          type: string
+          maxLength: 100
+          example: "Software Engineer"
+        employeeId:
+          type: string
+          pattern: '^[A-Za-z0-9]+$'
+          maxLength: 50
+          example: "EMP12345"
+        studentId:
+          type: string
+          pattern: '^[A-Za-z0-9]+$'
+          maxLength: 50
+          example: "STU67890"
+      additionalProperties:
+        type: string
+        description: Custom fields (key-value pairs)
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error context
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalidEmail:
+              value:
+                code: VALIDATION_ERROR
+                message: "Invalid email format"
+                details:
+                  field: "email"
+                  value: "invalid-email"
+            invalidPhoneNumber:
+              value:
+                code: VALIDATION_ERROR
+                message: "Phone number must be 10 digits"
+                details:
+                  field: "phone"
+                  pattern: "^[0-9]{10}$"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: NOT_FOUND
+            message: "Profile not found in localStorage"
+
+security:
+  - {} # No authentication required (Phase 1)

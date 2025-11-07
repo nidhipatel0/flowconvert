@@ -31,7 +31,45 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+**Privacy & Security (HIGHEST PRIORITY)**:
+- [ ] All conversions that CAN be client-side ARE client-side
+- [ ] Server-side processing justified and documented
+- [ ] Privacy indicators visible to users
+- [ ] HTTPS/TLS 1.3 minimum, AES-256 encryption for server uploads
+- [ ] No file logging or third-party tracking
+
+**User Experience**:
+- [ ] Maximum 3 clicks from landing to conversion
+- [ ] <100ms visual response for user actions
+- [ ] Before/after preview for quality-affecting conversions
+- [ ] WCAG 2.1 AA accessibility compliance
+- [ ] Mobile-first responsive design (44px touch targets)
+
+**Code Quality**:
+- [ ] TypeScript strict mode, no `any` types
+- [ ] Cyclomatic complexity ≤ 10 per function
+- [ ] 80% test coverage overall, 100% for critical paths
+- [ ] Lighthouse scores: Perf 90+, A11y 95+, BP 100, SEO 95+
+- [ ] FCP <1.5s, TTI <3.5s
+
+**Testing Standards**:
+- [ ] Tests written BEFORE implementation (TDD)
+- [ ] Unit, integration, and E2E tests planned
+- [ ] Edge cases covered: file size limits, corrupt files, network failures
+- [ ] Browser compatibility: Chrome, Firefox, Safari, Edge (latest 2 versions)
+
+**Quality Assurance**:
+- [ ] Original quality preservation as default
+- [ ] File format support aligns with priority (Images → Documents → Audio/Archive)
+- [ ] Free tier: 50MB/file, 5 batch, 150MB total
+- [ ] Premium tier: 500MB/file, 25 batch, 5GB total
+- [ ] No silent failures, clear error messages
+
+**Performance Targets**:
+- [ ] API response <200ms (p95)
+- [ ] Client conversions <3s for 10MB image
+- [ ] Server conversions <30s for 50MB file
+- [ ] Bundle size: initial <200KB gzipped, routes <100KB gzipped
 
 ## Project Structure
 

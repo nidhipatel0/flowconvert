@@ -1,0 +1,793 @@
+openapi: 3.0.3
+info:
+  title: FlowConvert File Operations API
+  description: |
+    API for client-side and server-side file processing operations including:
+    - Image conversion, compression, resize, crop, rotate (client-side preferred)
+    - PDF merge, split, extract pages (client-side)
+    - OCR text extraction from images/PDFs (client-side using Tesseract.js, no API needed)
+    - Automatic edge detection and perspective correction (client-side using jsfeat, no API needed)
+    - Server-side processing for DOCX/PPT (Phase 1, encrypted with auto-delete)
+    - Government document template formatting
+
+    **Client-Side Features (No API)**: Workflow presets (localStorage), File history (IndexedDB), Operation queue (in-memory)
+  version: 1.0.0
+  contact:
+    name: FlowConvert Team
+
+servers:
+  - url: https://api.flowconvert.com/v1
+    description: Production API
+  - url: http://localhost:3000/api
+    description: Local development
+
+tags:
+  - name: Upload
+    description: File upload operations (memory-only, no persistence)
+  - name: Image Processing
+    description: Client-side image operations (compression, resize, crop, rotate, convert)
+  - name: PDF Processing
+    description: Client-side PDF operations (merge, split, extract)
+  - name: Document Processing
+    description: Server-side DOCX/PPT processing (encrypted, auto-delete <5min)
+  - name: Templates
+    description: Government document template specifications
+
+paths:
+  /upload:
+    post:
+      tags:
+        - Upload
+      summary: Upload file for processing
+      description: |
+        Upload file to temporary encrypted storage for server-side processing.
+        Files are AES-256 encrypted and auto-deleted within 5 minutes.
+        Client-side operations (images, PDFs) should NOT use this endpoint.
+      operationId: uploadFile
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - processingType
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File to upload (max 50MB free tier, 500MB premium)
+                processingType:
+                  type: string
+                  enum: [document-replacement, server-conversion]
+                  description: Type of server-side processing required
+                metadata:
+                  type: object
+                  properties:
+                    originalFilename:
+                      type: string
+                      maxLength: 255
+                    contentType:
+                      type: string
+                      description: MIME type of uploaded file
+      responses:
+        '200':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - fileId
+                  - uploadedAt
+                  - expiresAt
+                  - encrypted
+                properties:
+                  fileId:
+                    type: string
+                    format: uuid
+                    description: Temporary file identifier
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  uploadedAt:
+                    type: string
+                    format: date-time
+                    example: "2025-11-06T10:30:00Z"
+                  expiresAt:
+                    type: string
+                    format: date-time
+                    description: Auto-delete timestamp (<5 min from upload)
+                    example: "2025-11-06T10:35:00Z"
+                  encrypted:
+                    type: boolean
+                    description: Always true for server uploads
+                    example: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          description: File size exceeds limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: FILE_TOO_LARGE
+                message: "File size 60MB exceeds free tier limit of 50MB"
+                details:
+                  maxSize: 52428800
+                  actualSize: 62914560
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /process/image:
+    post:
+      tags:
+        - Image Processing
+      summary: Server-side image processing (fallback)
+      description: |
+        Server-side image processing for browsers without client-side support.
+        PREFER client-side processing (browser-image-compression, Canvas API).
+        Uses Sharp for server-side operations.
+      operationId: processImage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fileId
+                - operations
+              properties:
+                fileId:
+                  type: string
+                  format: uuid
+                  description: File ID from upload endpoint
+                operations:
+                  type: array
+                  minItems: 1
+                  maxItems: 50
+                  items:
+                    $ref: '#/components/schemas/ImageOperation'
+      responses:
+        '200':
+          description: Image processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - downloadUrl
+                  - processedAt
+                  - metadata
+                properties:
+                  downloadUrl:
+                    type: string
+                    format: uri
+                    description: Temporary URL to download processed image (expires in 5 min)
+                    example: "https://api.flowconvert.com/v1/download/abc123?token=xyz"
+                  processedAt:
+                    type: string
+                    format: date-time
+                  metadata:
+                    type: object
+                    properties:
+                      originalSize:
+                        type: integer
+                        description: Original file size in bytes
+                      processedSize:
+                        type: integer
+                        description: Processed file size in bytes
+                      compressionRatio:
+                        type: number
+                        format: float
+                        description: Compression ratio (e.g., 0.65 = 65% of original)
+                      dimensions:
+                        type: object
+                        properties:
+                          width:
+                            type: integer
+                          height:
+                            type: integer
+                      format:
+                        type: string
+                        enum: [PNG, JPG, WEBP, GIF, BMP, TIFF, SVG]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: File not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: FILE_NOT_FOUND
+                message: "File not found or has expired (auto-deleted after 5 minutes)"
+
+  /process/pdf:
+    post:
+      tags:
+        - PDF Processing
+      summary: Server-side PDF processing (fallback)
+      description: |
+        Server-side PDF operations for browsers without pdf-lib support.
+        PREFER client-side processing using pdf-lib.
+      operationId: processPDF
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - operation
+              properties:
+                operation:
+                  $ref: '#/components/schemas/PDFOperation'
+      responses:
+        '200':
+          description: PDF processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - downloadUrl
+                  - processedAt
+                properties:
+                  downloadUrl:
+                    type: string
+                    format: uri
+                    description: Temporary URL to download processed PDF (expires in 5 min)
+                  processedAt:
+                    type: string
+                    format: date-time
+                  metadata:
+                    type: object
+                    properties:
+                      pageCount:
+                        type: integer
+                      fileSize:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /process/document:
+    post:
+      tags:
+        - Document Processing
+      summary: Server-side DOCX/PPT processing (Phase 1)
+      description: |
+        Server-side document processing using LibreOffice/Apache POI.
+        Used for field detection and replacement in DOCX/PPT files.
+        Phase 2 will migrate to client-side using docx.js.
+        Files encrypted with AES-256, auto-deleted within 5 minutes.
+      operationId: processDocument
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fileId
+                - operation
+              properties:
+                fileId:
+                  type: string
+                  format: uuid
+                operation:
+                  type: string
+                  enum: [detect-fields, replace-fields, convert-format]
+                parameters:
+                  type: object
+                  description: Operation-specific parameters
+      responses:
+        '200':
+          description: Document processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - downloadUrl
+                  - processedAt
+                properties:
+                  downloadUrl:
+                    type: string
+                    format: uri
+                  processedAt:
+                    type: string
+                    format: date-time
+                  detectedFields:
+                    type: array
+                    description: Only present for detect-fields operation
+                    items:
+                      $ref: '#/components/schemas/DetectedField'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '504':
+          description: Processing timeout (>30s for 50MB file)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: PROCESSING_TIMEOUT
+                message: "Document processing exceeded 30 second limit"
+
+  /templates:
+    get:
+      tags:
+        - Templates
+      summary: Get government document templates
+      description: |
+        Retrieve specifications for government document formatting.
+        Templates cached in CDN, updated annually.
+      operationId: getTemplates
+      parameters:
+        - name: country
+          in: query
+          schema:
+            type: string
+            enum: [IN]
+            default: IN
+          description: Country code (India only in Phase 1)
+      responses:
+        '200':
+          description: Templates retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Template'
+
+  /templates/{templateId}:
+    get:
+      tags:
+        - Templates
+      summary: Get specific template details
+      operationId: getTemplate
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [driving-license, passport, aadhar, pan-card, oci-application]
+      responses:
+        '200':
+          description: Template details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /download/{fileId}:
+    get:
+      tags:
+        - Upload
+      summary: Download processed file
+      description: |
+        Download processed file using temporary URL with token.
+        URL expires after 5 minutes.
+      operationId: downloadFile
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Temporary access token
+      responses:
+        '200':
+          description: File download
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          description: File expired (auto-deleted)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: FILE_EXPIRED
+                message: "File has been automatically deleted (5 minute limit)"
+
+components:
+  schemas:
+    ImageOperation:
+      type: object
+      required:
+        - type
+        - parameters
+      properties:
+        type:
+          type: string
+          enum: [RESIZE, CROP, ROTATE, FLIP, COMPRESS, CONVERT_FORMAT, REMOVE_METADATA]
+        parameters:
+          oneOf:
+            - $ref: '#/components/schemas/ResizeParameters'
+            - $ref: '#/components/schemas/CropParameters'
+            - $ref: '#/components/schemas/RotateParameters'
+            - $ref: '#/components/schemas/FlipParameters'
+            - $ref: '#/components/schemas/CompressParameters'
+            - $ref: '#/components/schemas/ConvertParameters'
+            - $ref: '#/components/schemas/RemoveMetadataParameters'
+
+    ResizeParameters:
+      type: object
+      required:
+        - width
+        - height
+      properties:
+        width:
+          type: integer
+          minimum: 1
+          maximum: 10000
+        height:
+          type: integer
+          minimum: 1
+          maximum: 10000
+        maintainAspectRatio:
+          type: boolean
+          default: true
+        preset:
+          type: string
+          enum: [instagram-story, instagram-post, facebook, twitter, linkedin, youtube, custom]
+
+    CropParameters:
+      type: object
+      required:
+        - x
+        - y
+        - width
+        - height
+      properties:
+        x:
+          type: integer
+          minimum: 0
+          description: Top-left x coordinate
+        y:
+          type: integer
+          minimum: 0
+          description: Top-left y coordinate
+        width:
+          type: integer
+          minimum: 1
+        height:
+          type: integer
+          minimum: 1
+        aspectRatio:
+          type: string
+          enum: ['1:1', '4:3', '16:9', '3:2', 'freeform']
+
+    RotateParameters:
+      type: object
+      required:
+        - degrees
+      properties:
+        degrees:
+          type: integer
+          enum: [90, 180, 270]
+
+    FlipParameters:
+      type: object
+      required:
+        - direction
+      properties:
+        direction:
+          type: string
+          enum: [horizontal, vertical]
+
+    CompressParameters:
+      type: object
+      required:
+        - quality
+      properties:
+        quality:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Quality level (1-100, 100 = best quality)
+        targetSize:
+          type: integer
+          description: Target file size in bytes (optional)
+
+    ConvertParameters:
+      type: object
+      required:
+        - targetFormat
+      properties:
+        targetFormat:
+          type: string
+          enum: [PNG, JPG, WEBP, GIF, BMP, TIFF]
+        quality:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: For lossy formats only
+
+    RemoveMetadataParameters:
+      type: object
+      properties:
+        removeAll:
+          type: boolean
+          default: false
+        removeLocation:
+          type: boolean
+          default: true
+          description: Remove GPS data
+        preserveTitle:
+          type: boolean
+          default: true
+        preserveAuthor:
+          type: boolean
+          default: true
+        preserveCopyright:
+          type: boolean
+          default: true
+
+    PDFOperation:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [MERGE_PDF, SPLIT_PDF, EXTRACT_PAGES]
+        parameters:
+          oneOf:
+            - $ref: '#/components/schemas/MergePDFParameters'
+            - $ref: '#/components/schemas/SplitPDFParameters'
+            - $ref: '#/components/schemas/ExtractPagesParameters'
+
+    MergePDFParameters:
+      type: object
+      required:
+        - fileIds
+      properties:
+        fileIds:
+          type: array
+          minItems: 2
+          items:
+            type: string
+            format: uuid
+          description: File IDs in merge order
+
+    SplitPDFParameters:
+      type: object
+      required:
+        - splitMethod
+      properties:
+        splitMethod:
+          type: string
+          enum: [every-page, page-ranges, page-numbers]
+        ranges:
+          type: array
+          items:
+            type: object
+            required:
+              - start
+              - end
+            properties:
+              start:
+                type: integer
+                minimum: 1
+              end:
+                type: integer
+                minimum: 1
+        pageNumbers:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+
+    ExtractPagesParameters:
+      type: object
+      required:
+        - pageNumbers
+      properties:
+        pageNumbers:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            minimum: 1
+
+    DetectedField:
+      type: object
+      required:
+        - id
+        - type
+        - originalValue
+        - position
+        - confidence
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [NAME, ROLL_NUMBER, EMAIL, PHONE, CLASS, SECTION, DESIGNATION, EMPLOYEE_ID, STUDENT_ID, CUSTOM]
+        originalValue:
+          type: string
+          description: Text found in document
+        newValue:
+          type: string
+          description: User's replacement value
+        position:
+          type: object
+          properties:
+            page:
+              type: integer
+              minimum: 1
+            paragraph:
+              type: integer
+            x:
+              type: integer
+            y:
+              type: integer
+            width:
+              type: integer
+            height:
+              type: integer
+        confidence:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Detection confidence score
+        status:
+          type: string
+          enum: [DETECTED, EDITED, REPLACED, SKIPPED]
+
+    Template:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - guidelines
+      properties:
+        id:
+          type: string
+          enum: [driving-license, passport, aadhar, pan-card, oci-application]
+        name:
+          type: string
+          example: "Driving License"
+        description:
+          type: string
+          example: "Indian Driving License photo and document specifications"
+        photo:
+          $ref: '#/components/schemas/TemplateRequirement'
+        document:
+          $ref: '#/components/schemas/TemplateRequirement'
+        guidelines:
+          type: array
+          items:
+            type: string
+          example:
+            - "Photo must have white background"
+            - "Face must be centered and clearly visible"
+            - "Document must be in PDF format"
+        exampleUrl:
+          type: string
+          format: uri
+          description: Link to example formatted document
+
+    TemplateRequirement:
+      type: object
+      required:
+        - dimensions
+        - maxSize
+        - format
+      properties:
+        dimensions:
+          type: object
+          required:
+            - width
+          properties:
+            width:
+              type: string
+              example: "3.5cm"
+            height:
+              type: string
+              example: "4.5cm"
+        maxSize:
+          type: string
+          example: "100KB"
+          description: Maximum file size
+        minSize:
+          type: string
+          example: "50KB"
+          description: Minimum file size (optional)
+        format:
+          type: string
+          enum: [PNG, JPG, WEBP, PDF, DOCX]
+        aspectRatio:
+          type: string
+          example: "1:1"
+        dpi:
+          type: integer
+          example: 300
+          description: DPI requirement (optional)
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+          example: "FILE_TOO_LARGE"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "File size exceeds maximum limit"
+        details:
+          type: object
+          description: Additional error context
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: INVALID_REQUEST
+            message: "Invalid file format or operation parameters"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: NOT_FOUND
+            message: "Requested resource not found"
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: RATE_LIMIT_EXCEEDED
+            message: "Too many requests. Free tier: 150MB/day, 20 requests/hour"
+            details:
+              retryAfter: 3600
+
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for premium tier (Phase 2)
+
+security:
+  - {} # No auth required for Phase 1 (public access)

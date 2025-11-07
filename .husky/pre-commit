@@ -1,0 +1,9 @@
+# Type check
+npm run type-check
+
+# Lint
+npm run lint
+
+# Note: Full test suite runs in CI/CD
+# Uncomment to run tests on commit (may slow down commits)
+# npm test

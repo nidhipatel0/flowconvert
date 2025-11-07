@@ -1,0 +1,591 @@
+openapi: 3.0.3
+info:
+  title: FlowConvert Batch Processing API
+  description: |
+    API for batch file processing operations.
+    Supports applying same operations to multiple files simultaneously.
+
+    **Limits**:
+    - Free tier: 5 files, 150MB total
+    - Premium tier: 25 files, 5GB total (Phase 2)
+  version: 1.0.0
+
+servers:
+  - url: https://api.flowconvert.com/v1
+    description: Production API
+  - url: http://localhost:3000/api
+    description: Local development
+
+tags:
+  - name: Batch Jobs
+    description: Create and manage batch processing jobs
+  - name: Batch Progress
+    description: Track batch job progress and errors
+
+paths:
+  /batch:
+    post:
+      tags:
+        - Batch Jobs
+      summary: Create batch processing job
+      description: |
+        Create a batch job to apply same operations to multiple files.
+        All files processed in parallel where possible.
+        Returns job ID for progress tracking.
+      operationId: createBatchJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - files
+                - operations
+              properties:
+                files:
+                  type: array
+                  minItems: 2
+                  maxItems: 5
+                  description: File IDs to process (max 5 free tier, 25 premium)
+                  items:
+                    type: string
+                    format: uuid
+                operations:
+                  type: array
+                  minItems: 1
+                  maxItems: 50
+                  description: Operations to apply to ALL files
+                  items:
+                    oneOf:
+                      - $ref: '#/components/schemas/ImageOperation'
+                      - $ref: '#/components/schemas/PDFOperation'
+                      - $ref: '#/components/schemas/DocumentOperation'
+                continueOnError:
+                  type: boolean
+                  default: true
+                  description: Continue processing remaining files if one fails
+                notifyOnComplete:
+                  type: boolean
+                  default: false
+                  description: Send notification when batch completes (Phase 2)
+      responses:
+        '202':
+          description: Batch job created and processing
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - jobId
+                  - status
+                  - createdAt
+                  - progress
+                properties:
+                  jobId:
+                    type: string
+                    format: uuid
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  status:
+                    type: string
+                    enum: [PENDING, PROCESSING, COMPLETED, PARTIALLY_COMPLETED, FAILED]
+                    example: "PROCESSING"
+                  createdAt:
+                    type: string
+                    format: date-time
+                  progress:
+                    $ref: '#/components/schemas/BatchProgress'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          description: Batch size exceeds limits
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                tooManyFiles:
+                  value:
+                    code: BATCH_LIMIT_EXCEEDED
+                    message: "Free tier allows max 5 files per batch"
+                    details:
+                      maxFiles: 5
+                      requestedFiles: 10
+                totalSizeTooLarge:
+                  value:
+                    code: BATCH_SIZE_EXCEEDED
+                    message: "Total batch size 200MB exceeds free tier limit of 150MB"
+                    details:
+                      maxSize: 157286400
+                      actualSize: 209715200
+
+    get:
+      tags:
+        - Batch Jobs
+      summary: List batch jobs
+      description: |
+        List all batch jobs (in-memory only, Phase 1).
+        Phase 2 will add persistence and filtering.
+      operationId: listBatchJobs
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, PROCESSING, COMPLETED, PARTIALLY_COMPLETED, FAILED]
+          description: Filter by job status
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Max jobs to return
+      responses:
+        '200':
+          description: Batch jobs retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - jobs
+                  - total
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BatchJob'
+                  total:
+                    type: integer
+                    description: Total jobs matching filter
+
+  /batch/{jobId}:
+    get:
+      tags:
+        - Batch Progress
+      summary: Get batch job details
+      description: |
+        Retrieve batch job status, progress, and results.
+        Poll this endpoint for real-time progress updates.
+      operationId: getBatchJob
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Batch job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchJob'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Batch Jobs
+      summary: Cancel batch job
+      description: |
+        Cancel in-progress batch job.
+        Completed files remain available for download.
+        Processing files are stopped gracefully.
+      operationId: cancelBatchJob
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Batch job cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - jobId
+                  - status
+                  - cancelledAt
+                properties:
+                  jobId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [CANCELLED]
+                  cancelledAt:
+                    type: string
+                    format: date-time
+                  completedFiles:
+                    type: integer
+                    description: Files successfully processed before cancellation
+                  inProgressFiles:
+                    type: integer
+                    description: Files stopped mid-processing
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Job already completed/failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: JOB_ALREADY_COMPLETE
+                message: "Cannot cancel completed batch job"
+
+  /batch/{jobId}/results:
+    get:
+      tags:
+        - Batch Progress
+      summary: Get batch job results
+      description: |
+        Retrieve download URLs for all successfully processed files.
+        Only available when job status is COMPLETED or PARTIALLY_COMPLETED.
+      operationId: getBatchResults
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Batch results
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - jobId
+                  - status
+                  - results
+                properties:
+                  jobId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [COMPLETED, PARTIALLY_COMPLETED]
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BatchFileResult'
+                  downloadAllUrl:
+                    type: string
+                    format: uri
+                    description: ZIP file with all successful results (expires in 5 min)
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Job not yet complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: JOB_IN_PROGRESS
+                message: "Batch job still processing. Poll /batch/{jobId} for progress."
+
+  /batch/{jobId}/errors:
+    get:
+      tags:
+        - Batch Progress
+      summary: Get batch job errors
+      description: |
+        Retrieve detailed error information for failed files.
+        Helps users identify which files failed and why.
+      operationId: getBatchErrors
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Batch errors
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - jobId
+                  - errors
+                properties:
+                  jobId:
+                    type: string
+                    format: uuid
+                  errors:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BatchError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    BatchJob:
+      type: object
+      required:
+        - id
+        - fileIds
+        - operations
+        - progress
+        - status
+        - createdAt
+        - errors
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Batch job identifier
+        fileIds:
+          type: array
+          minItems: 2
+          items:
+            type: string
+            format: uuid
+          description: File IDs included in batch
+        operations:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/ImageOperation'
+              - $ref: '#/components/schemas/PDFOperation'
+              - $ref: '#/components/schemas/DocumentOperation'
+        progress:
+          $ref: '#/components/schemas/BatchProgress'
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, PARTIALLY_COMPLETED, FAILED]
+          description: |
+            - PENDING: Job created, not started
+            - PROCESSING: Currently processing files
+            - COMPLETED: All files processed successfully
+            - PARTIALLY_COMPLETED: Some files failed, some succeeded
+            - FAILED: All files failed
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          description: Only present when status is COMPLETED/PARTIALLY_COMPLETED/FAILED
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/BatchError'
+
+    BatchProgress:
+      type: object
+      required:
+        - total
+        - completed
+        - failed
+      properties:
+        total:
+          type: integer
+          minimum: 2
+          description: Total files in batch
+          example: 5
+        completed:
+          type: integer
+          minimum: 0
+          description: Successfully processed files
+          example: 3
+        failed:
+          type: integer
+          minimum: 0
+          description: Failed files
+          example: 1
+        inProgress:
+          type: integer
+          minimum: 0
+          description: Currently processing files
+          example: 1
+        percentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Completion percentage
+          example: 60
+        estimatedTimeRemaining:
+          type: integer
+          description: Estimated seconds remaining (optional)
+          example: 45
+
+    BatchFileResult:
+      type: object
+      required:
+        - fileId
+        - originalFilename
+        - status
+      properties:
+        fileId:
+          type: string
+          format: uuid
+          description: Original file ID
+        originalFilename:
+          type: string
+          description: Original filename
+          example: "photo1.jpg"
+        status:
+          type: string
+          enum: [SUCCESS, FAILED]
+        downloadUrl:
+          type: string
+          format: uri
+          description: Download URL (only present if status = SUCCESS, expires in 5 min)
+        errorMessage:
+          type: string
+          description: Error message (only present if status = FAILED)
+        metadata:
+          type: object
+          description: File-specific processing metadata
+          properties:
+            originalSize:
+              type: integer
+              description: Original file size in bytes
+            processedSize:
+              type: integer
+              description: Processed file size in bytes
+            processingTime:
+              type: number
+              format: float
+              description: Processing time in seconds
+            operationsApplied:
+              type: integer
+              description: Number of operations successfully applied
+
+    BatchError:
+      type: object
+      required:
+        - fileId
+        - fileName
+        - operationId
+        - errorMessage
+      properties:
+        fileId:
+          type: string
+          format: uuid
+          description: File that failed
+        fileName:
+          type: string
+          description: Filename for user reference
+          example: "corrupted-file.jpg"
+        operationId:
+          type: string
+          format: uuid
+          description: Operation that failed
+        operationType:
+          type: string
+          description: Type of operation that failed
+          example: "COMPRESS"
+        errorMessage:
+          type: string
+          description: Human-readable error message
+          example: "Image file corrupted or unsupported format"
+        errorCode:
+          type: string
+          description: Machine-readable error code
+          example: "INVALID_IMAGE_FORMAT"
+        timestamp:
+          type: string
+          format: date-time
+
+    ImageOperation:
+      type: object
+      required:
+        - type
+        - parameters
+      properties:
+        type:
+          type: string
+          enum: [RESIZE, CROP, ROTATE, FLIP, COMPRESS, CONVERT_FORMAT, REMOVE_METADATA]
+        parameters:
+          type: object
+          description: Operation-specific parameters (see file-operations.yaml)
+
+    PDFOperation:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [MERGE_PDF, SPLIT_PDF, EXTRACT_PAGES]
+        parameters:
+          type: object
+          description: Operation-specific parameters (see file-operations.yaml)
+
+    DocumentOperation:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [DETECT_FIELDS, REPLACE_FIELDS]
+        parameters:
+          type: object
+          description: Operation-specific parameters (see document-replacement.yaml)
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error context
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            tooFewFiles:
+              value:
+                code: INVALID_BATCH
+                message: "Batch requires minimum 2 files"
+            noOperations:
+              value:
+                code: INVALID_BATCH
+                message: "At least one operation required"
+
+    NotFound:
+      description: Batch job not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: JOB_NOT_FOUND
+            message: "Batch job not found or has expired"
+
+security:
+  - {} # No authentication required (Phase 1)

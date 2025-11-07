@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "SlashCommand(/speckit.constitution Create a comprehensive project constitution for FlowConvert - a privacy-first, universal file conversion web platform with the tagline \"Drop. Done.\" - Privacy First. Quality Always.\n\nCORE IDENTITY:\n- Product: FlowConvert - Universal File Converter\n- Vision: World's most comprehensive, privacy-focused, and user-friendly file conversion platform\n\nGOVERNING PRINCIPLES (in priority order):\n\n1. PRIVACY & SECURITY (HIGHEST PRIORITY)\n- Client-Side First: All conversions that CAN be client-side MUST be client-side (images, compression, basic PDF, text, simple audio). Server-side only for DOCX↔PDF, HEIC, video.\n- Data Handling: AES-256 encryption, auto-delete within 5 minutes, no file logging, no third-party tracking\n- User Control: EXIF removal user-controlled (remove location by default), clear indicators for server vs client processing\n- Security: HTTPS/TLS 1.3 minimum, input validation, malicious file protection, regular audits\n\n2. USER EXPERIENCE & INTERFACE\n- Simplicity: Max 3 clicks from landing to conversion, mobile-first responsive (44px touch targets)\n- Immediate Feedback: <100ms visual response, progress for >1s operations, real-time previews\n- Quality Transparency: Always show before/after comparison, side-by-side previews, file size estimates\n- Accessibility: WCAG 2.1 AA minimum, keyboard navigation, screen reader compatible\n\n3. CODE QUALITY & ARCHITECTURE\n- Frontend: React/Next.js + TypeScript, atomic design components, Context/Zustand state\n- Backend: Node.js + Express/Next.js API, microservices, Bull queue, stateless design\n- Standards: Strict TypeScript (no any), ESLint + Prettier, max complexity 10, 80% coverage, conventional commits\n- Performance: Lighthouse 90+/95+/100/95+ (Perf/A11y/BP/SEO), FCP <1.5s, TTI <3.5s, code splitting, CDN\n\n4. TESTING STANDARDS\n- TDD: Write tests BEFORE implementation, 80% overall coverage, 100% critical paths\n- Frameworks: Jest, React Testing Library, Playwright/Cypress, Chromatic/Percy\n- Continuous: All tests pass before merge, automated CI/CD, performance testing, Snyk/Dependabot\n- Edge Cases: Test limits (50MB free/500MB premium), corrupt files, network failures, browser compat\n\n5. QUALITY ASSURANCE\n- Conversion Quality: Original quality default, user-controlled degradation with preview, lossless when possible\n- Format Support: Images (Week 1-2) → Documents (Week 3-4) → Audio/Archive (Week 5-6)\n- Limits: Free (50MB/file, 5 batch, 150MB total), Premium (500MB/file, 25 batch, 5GB total), clear messaging, no silent failures\n\n6. DEVELOPMENT WORKFLOW\n- Version Control: Git flow, feature branches, semantic versioning, protected branches\n- Code Review: Min 1 approval, checklist (functionality, tests, performance, security, a11y)\n- Documentation: README, API (OpenAPI), components (Storybook), help docs, ADRs\n- Deployment: CI/CD, staging mirrors prod, blue-green deploys, auto-rollback, feature flags\n\n7. SCALABILITY & PERFORMANCE\n- Phase 1 (0-10K): Single VPS, PostgreSQL + Redis, Cloudflare CDN\n- Phase 2 (10K-100K): Separate web/workers, managed DB (RDS/Supabase), S3, APM\n- Phase 3 (100K+): Auto-scaling, multi-region, processing clusters, microservices, advanced monitoring\n- Targets: API <200ms (p95), client conversions <3s (10MB), server <30s (50MB), 99.9% uptime\n\n8. ERROR HANDLING & RESILIENCE\n- User Errors: Clear, actionable messages (no jargon), specific guidance, recovery options\n- Technical: Try-catch for async, graceful degradation, retry with exponential backoff, circuit breakers\n- Monitoring: Real-time tracking (Sentry), performance dashboards, critical alerts, status page\n\n9. COMPETITIVE DIFFERENTIATION\n- One-Stop: Convert + Compress + Resize + Edit in ONE workflow\n- Privacy Marketing: \"Files never leave device\" prominent, visual privacy indicators\n- Quality: Live preview, user controls, side-by-side comparison always\n- Fair Pricing: Generous free tier, $4.99/month premium (vs $19.99 Adobe)\n\n10. LONG-TERM VISION\n- Platform: Web-first, PWA support, native apps (Phase 4-5), third-party API\n- Features: Modular formats, plugin system, cloud integrations, AI features (smart crop, bg removal, OCR)\n- Tech Debt: Quarterly refactoring, dependency updates, performance audits, architecture reviews\n\nPROJECT VERSION: 1.0.0\nRATIFICATION DATE: 2025-11-06)",
+      "SlashCommand(/speckit.constitution:*)",
+      "Bash(git fetch:*)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File:*)",
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(npm install:*)",
+      "Bash(npx husky init)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm test:*)",
+      "Bash(npx shadcn-ui@latest init:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(git add .)",
+      "Bash(if exist .next rmdir /s /q .next)",
+      "Bash(if exist tsconfig.tsbuildinfo del tsconfig.tsbuildinfo)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
