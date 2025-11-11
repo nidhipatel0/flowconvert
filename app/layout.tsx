@@ -77,7 +77,7 @@ export default function RootLayout({
 }): JSX.Element {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="min-h-screen bg-secondary-50 antialiased">
+      <body className="min-h-screen antialiased font-sans">
         {/* Main content */}
         <main className="relative flex min-h-screen flex-col">
           {children}

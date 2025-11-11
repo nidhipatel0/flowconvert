@@ -6,3 +6,4 @@
 
 export * from './editor-store';
 export * from './profile-store';
+export * from './themeStore';

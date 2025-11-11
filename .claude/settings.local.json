@@ -17,7 +17,16 @@
       "Bash(npx shadcn@latest add:*)",
       "Bash(git add .)",
       "Bash(if exist .next rmdir /s /q .next)",
-      "Bash(if exist tsconfig.tsbuildinfo del tsconfig.tsbuildinfo)"
+      "Bash(if exist tsconfig.tsbuildinfo del tsconfig.tsbuildinfo)",
+      "Bash(git commit:*)",
+      "Bash(git add:*)",
+      "Bash(gh --version:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill //F //PID 70804)",
+      "Bash(taskkill:*)",
+      "Bash(if not exist \"lib\\types\" mkdir \"lib\\types\")",
+      "Bash(if not exist \"app\\api\\process\\document\" mkdir \"app\\api\\process\\document\")"
     ],
     "deny": [],
     "ask": []

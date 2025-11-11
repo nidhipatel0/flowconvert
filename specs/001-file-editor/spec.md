@@ -1,9 +1,30 @@
-# Feature Specification: Universal File Editor Platform
+# Feature Specification: Universal File Editor Platform (Smallpdf Parity + Enhancements)
 
 **Feature Branch**: `001-file-editor`
 **Created**: 2025-11-06
-**Status**: Draft
-**Input**: Comprehensive file editing platform with conversion, compression, resizing, cropping, rotating, PDF operations, metadata editing, government document templates, and multi-file batch processing
+**Updated**: 2025-11-07 (Smallpdf Feature Parity)
+**Status**: Comprehensive Specification
+**Input**: Complete file editing platform matching/exceeding Smallpdf with 37+ tools:
+
+**Core Features**:
+- ✅ Image Operations: Convert (PNG/JPG/WebP/GIF), compress, resize (pixel/%), crop, rotate, flip
+- ✅ PDF Conversion: PDF ↔ Word/Excel/PowerPoint/Images with formatting preservation
+- ✅ PDF Compression: Advanced quality control (Low/Recommended/High Quality)
+- ✅ PDF Organization: Merge, split, extract pages, rotate, delete, reorder (drag-drop thumbnails)
+- ✅ PDF Editing: Annotate (text/highlight/shapes), watermark (text/image), crop, redact, page numbers
+- ✅ PDF Forms: Fill forms, create form fields (text/checkbox/radio/dropdown/signature)
+- ✅ PDF Security: Unlock (remove password), protect (add password/permissions), flatten
+- ✅ PDF Reader: Navigate, zoom, search, thumbnail sidebar
+- ✅ E-Signatures: Draw, upload, type signatures with positioning
+- ✅ AI Tools: Summarize PDFs, translate (50+ languages), chat with PDF, generate quiz questions
+- ✅ OCR: Make scanned documents searchable with Tesseract.js
+- ✅ Document Templates: Auto-format Indian government docs (DL, Passport, Aadhar, PAN, OCI)
+- ✅ Document Replacement: Auto-detect and replace personal/academic details with saved profiles
+- ✅ Edge Detection: Auto-detect document boundaries with perspective correction
+- ✅ Batch Processing: Process 5 files simultaneously (free tier), ZIP download
+- ✅ Workflow Presets: Save and apply operation sequences ("Instagram Post", "Government Doc", etc.)
+- ✅ Modern UI: Tool navigation bar, horizontal file cards, percentage/pixel toggle, improved error handling
+- ✅ Privacy-First: Client-side processing for images and basic PDFs, encrypted server-side only when necessary
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -165,12 +186,20 @@ A mobile user is browsing their photo gallery and finds a group of 5 photos they
 #### Core File Operations
 
 - **FR-001**: System MUST support image format conversion between PNG, JPG, WebP, GIF, BMP, TIFF, and SVG
-- **FR-002**: System MUST support document format conversion between PDF, DOCX, TXT, RTF
+- **FR-002**: System MUST support document format conversion between PDF, DOCX, XLSX, PPTX, TXT, RTF
+- **FR-002-A**: System MUST support PDF to Office format conversions: PDF → Word, PDF → Excel, PDF → PowerPoint with formatting preservation
+- **FR-002-B**: System MUST support Office to PDF conversions: Word → PDF, Excel → PDF, PowerPoint → PDF with layout preservation
+- **FR-002-C**: System MUST support image to document conversions: Images → PDF, Images → Word with automatic layout
 - **FR-003**: System MUST support image compression with user-controlled quality slider (1-100%) AND target file size mode (user enters "Make this 200KB" and system auto-adjusts quality to hit target)
+- **FR-003-A**: System MUST support advanced PDF compression with user-controlled quality levels (Low Quality/Small Size, Recommended Quality, High Quality/Large Size) showing estimated file size reduction before processing
 - **FR-004**: System MUST support image resizing with preset dimensions (Instagram, Facebook, Twitter, LinkedIn, YouTube, Custom), percentage-based resizing (25%, 50%, 75%, 125%, 150%, 200%, custom %), and pixel-based resizing
+- **FR-004-A**: System MUST provide toggle control to switch between percentage-based and pixel-based dimension input modes (beside Image Settings heading)
+- **FR-004-B**: System MUST fix input field behavior: when all digits deleted, field shows empty (not "0"), and new input replaces empty value (not appending to "0" creating "0876")
 - **FR-005**: System MUST support image cropping with freeform, aspect ratio locked, and preset ratios (1:1, 4:3, 16:9, 3:2)
 - **FR-006**: System MUST support image rotation (90°, 180°, 270°) and flip (horizontal, vertical)
 - **FR-007**: System MUST support PDF operations: merge multiple PDFs, split PDF by page ranges, extract specific pages, drag-to-rearrange pages with thumbnail view, multi-select pages for batch operations (delete, extract, rotate), and insert blank pages
+- **FR-007-A**: System MUST support PDF page management: rotate pages (90°, 180°, 270°), delete selected pages, extract selected pages to new PDF
+- **FR-007-B**: System MUST support organize PDF workflow: reorder pages via drag-and-drop with thumbnail preview, add/remove pages interactively
 - **FR-008**: System MUST support metadata editing: view all EXIF data, remove location data, remove all metadata, edit title/author/copyright
 
 #### Government Document Templates
@@ -273,11 +302,51 @@ A mobile user is browsing their photo gallery and finds a group of 5 photos they
 - **FR-075**: System MUST provide format recommendation badges for screenshots (PNG - lossless), photos (JPG/WebP - lossy okay), diagrams/logos (SVG - vector)
 - **FR-076**: System MUST support adding page numbers to PDFs with position control (top-left, top-right, bottom-left, bottom-right, center), font size, and transparency settings
 
+#### PDF Editing & Annotation (Smallpdf Parity)
+
+- **FR-077**: System MUST support PDF annotation: add text boxes, highlight text, add shapes (rectangles, circles, arrows), add comments with reply threads
+- **FR-078**: System MUST support PDF watermarking: add text watermarks (custom text, position, rotation, opacity, font) or image watermarks (logo, position, opacity, tiling)
+- **FR-079**: System MUST support PDF cropping: crop pages to custom dimensions or standard sizes (A4, Letter, etc.) with visual crop tool
+- **FR-080**: System MUST support PDF redaction: permanently remove sensitive information (text, images) with black boxes, preview redacted areas before finalizing
+- **FR-081**: System MUST provide PDF reader/viewer: navigate pages, zoom in/out, fit to width/page, thumbnail sidebar, search within PDF
+- **FR-082**: System MUST support sharing PDFs: generate shareable links with expiration (24h, 7d, 30d, never), optional password protection, track views (Phase 2)
+
+#### E-Signatures & PDF Forms (Smallpdf Parity)
+
+- **FR-083**: System MUST support PDF signing: draw signature, upload signature image, type signature with fonts, position signature on document
+- **FR-084**: System MUST support request signatures: send PDF to others for signature via email, track signature status (pending, signed), reminders (Phase 2)
+- **FR-085**: System MUST support PDF form filling: detect form fields automatically, fill text fields, check checkboxes, select radio buttons, add signatures to signature fields
+- **FR-086**: System MUST support PDF form creation: convert static PDF to fillable form by adding text fields, checkboxes, dropdowns, signature fields
+
+#### PDF Security (Smallpdf Parity)
+
+- **FR-087**: System MUST support unlock PDF: remove password protection from PDFs when user provides correct password
+- **FR-088**: System MUST support protect PDF: add password protection (open password, permission password), set document permissions (printing, editing, copying)
+- **FR-089**: System MUST support flatten PDF: convert all form fields and annotations to static content (prevents editing), preserve visual appearance
+
+#### AI-Powered Tools (Smallpdf Parity + Enhancement)
+
+- **FR-090**: System MUST support AI PDF summarizer: generate concise summaries of PDF content (key points, main ideas), adjustable length (brief, detailed)
+- **FR-091**: System MUST support translate PDF: translate PDF content to 50+ languages, preserve formatting and layout, download translated PDF
+- **FR-092**: System MUST support chat with PDF: interactive Q&A about PDF content using LLM, cite page numbers in answers, maintain conversation history
+- **FR-093**: System MUST support AI question generator: generate quiz questions (multiple choice, true/false, short answer) from PDF content for study/assessment
+- **FR-094**: System MUST provide AI assistant: natural language commands to perform operations ("compress this to 2MB", "convert to PNG", "remove pages 3-5")
+
+#### UI/UX Enhancements (User Requirements)
+
+- **FR-095**: System MUST provide tool navigation bar at top of page with categorized tool icons (Convert, Compress, Edit PDF, Organize, Sign, AI Tools)
+- **FR-096**: System MUST display uploaded files as horizontal cards (not vertical list) with thumbnails, filename, file size, format, and action buttons (edit, remove)
+- **FR-097**: System MUST show clear error messages for unsupported file types BEFORE upload attempt, with guidance on supported formats
+- **FR-098**: System MUST validate file type client-side and prevent unsupported files from uploading (e.g., PSD files with message "PSD not yet supported. Convert to PNG/JPG first.")
+- **FR-099**: System MUST reduce hero section height by 40% on landing page, move detailed feature descriptions to dedicated About and FAQ pages
+- **FR-100**: System MUST provide About page with product vision, privacy commitment, feature overview, roadmap
+- **FR-101**: System MUST provide FAQ page with common questions (file limits, privacy, supported formats, pricing, troubleshooting)
+
 ### Privacy & Security Requirements (FlowConvert Specific)
 
 - **PS-001**: Processing MUST be client-side for all image operations (resize, crop, rotate, compress, format conversion between PNG/JPG/WebP/GIF/BMP)
 - **PS-002**: Processing MUST be client-side for basic PDF operations (merge, split, extract pages)
-- **PS-003**: Server-side processing permitted ONLY for: DOCX↔PDF conversion, DOCX/PPT text detection/replacement (Phase 1), TIFF/SVG processing, government document template validation
+- **PS-003**: Server-side processing permitted ONLY for: DOCX↔PDF/XLSX/PPTX conversion, DOCX/PPT text detection/replacement (Phase 1), TIFF/SVG processing, government document template validation, AI features (summarize, translate, chat, questions)
 - **PS-004**: If server-side processing required, files MUST be encrypted (AES-256) and deleted within 5 minutes of completion
 - **PS-005**: Privacy indicator MUST show users whether processing is client-side (shield icon) or server-side (cloud icon with explanation) before operation starts
 - **PS-006**: NO logging of file contents, filenames, or metadata
@@ -287,6 +356,9 @@ A mobile user is browsing their photo gallery and finds a group of 5 photos they
 - **PS-010**: Document details replacement MUST transition to client-side (offline) processing in Phase 2 using browser-based DOCX/PDF parsing libraries
 - **PS-011**: Mobile app MUST request permissions (camera, photo library) only when needed (lazy permissions) with clear explanation of why access is required
 - **PS-012**: Photos captured via camera in "Images to PDF" mode MUST NOT be saved to device gallery unless user explicitly chooses to save
+- **PS-013**: AI features (summarize, translate, chat, questions) require server-side LLM processing - files encrypted in transit and deleted after processing, conversation history stored locally only
+- **PS-014**: E-signature data (signature images, metadata) MUST be stored locally in browser only, signatures embedded in PDF before download
+- **PS-015**: Shareable PDF links (FR-082) MUST have user-controlled expiration, optional password protection, and anonymous view tracking (no user identification)
 
 ### User Experience Requirements (FlowConvert Specific)
 
@@ -323,6 +395,17 @@ A mobile user is browsing their photo gallery and finds a group of 5 photos they
 - **Workflow Preset**: Saved sequence of operations with name (e.g., "Social Media Post") that can be quickly applied to files, stored in localStorage
 - **File History Entry**: Recent file record (last 5 files) with full file data, timestamp, operations applied, stored locally for 24 hours (opt-in)
 - **Operation Queue**: Collection of operations to be applied sequentially or all-at-once with intermediate preview states
+- **PDF Annotation**: Visual annotation element (text box, highlight, shape, comment) with position, style properties, author, timestamp
+- **Watermark**: Text or image overlay on PDF pages with position, opacity, rotation, font/size (text), tiling option
+- **Signature**: Electronic signature with image data, position, size, timestamp, signer name
+- **Signature Request**: Outbound signature request with recipient email, document, status (pending/signed/expired), reminder schedule (Phase 2)
+- **PDF Form**: Collection of form fields (text, checkbox, radio, dropdown, signature) with field names, types, positions, values
+- **PDF Protection**: Security settings with open password, permission password, document permissions (print, edit, copy)
+- **Shareable Link**: PDF sharing link with unique ID, expiration date, optional password, view count, creation timestamp (Phase 2)
+- **AI Conversation**: Chat session with PDF with message history, context, page references, stored locally
+- **AI Summary**: Generated PDF summary with key points, adjustable detail level, source page references
+- **Translation**: Translated PDF content with source/target languages, translated text, formatting metadata
+- **Tool Category**: Logical grouping of tools (Convert, Compress, Edit PDF, Organize, Sign, AI Tools) for navigation
 
 ## Success Criteria *(mandatory)*
 
@@ -360,20 +443,38 @@ A mobile user is browsing their photo gallery and finds a group of 5 photos they
 
 The following features are explicitly **NOT** included in Phase 1 MVP:
 
-- Advanced AI assistant with LLM integration (natural language commands, auto-editing)
-- User accounts, login, saved files, edit history across sessions (profiles stored locally only)
-- Cloud storage integrations (Google Drive, Dropbox, OneDrive)
-- Collaboration features (sharing, comments, multi-user editing)
-- Advanced image editing (filters, effects, color correction, background removal)
-- E-signature functionality
-- Video editing or conversion
-- Audio editing beyond basic conversion
-- Premium tier pricing and subscription management
-- **Mobile native apps (iOS/Android) with system integration** - Phase 1 is web-responsive PWA only, Phase 2 adds native apps with share sheet, file associations, camera/gallery integration
-- **Watermark addition with custom branding** - Phase 1 has page numbering, Phase 2 adds custom watermarks with logo/text options
-- API access for third-party integrations
-- **Offline document details replacement** (Phase 1 uses server-side, Phase 2 transitions to client-side)
-- **Advanced text editing within PDFs/documents** (Phase 1 has basic field replacement, Phase 2 adds full Canva-style editing)
+- **User accounts and cloud sync**: Login, saved files across devices, edit history sync (profiles stored locally only in Phase 1)
+- **Cloud storage integrations**: Google Drive, Dropbox, OneDrive direct integration
+- **Collaboration features**: Real-time multi-user editing, shared workspaces, comment threads with replies
+- **Advanced image editing**: Filters, effects, color correction, background removal, smart object removal
+- **Video and audio editing**: Video conversion, video compression, audio editing beyond basic format conversion
+- **Premium tier features**: Subscription management, payment processing, tiered feature access (all features free in Phase 1)
+- **Mobile native apps (iOS/Android)**: Phase 1 is web-responsive PWA only, Phase 2 adds native apps with share sheet, file associations, camera/gallery integration
+- **API access**: Third-party integrations, developer API, webhooks, programmatic access
+- **Offline document details replacement**: Phase 1 uses server-side processing, Phase 2 transitions to client-side with browser libraries
+- **Advanced PDF text editing**: Phase 1 has basic annotation/field replacement, Phase 2 adds full Canva-style rich text editing within PDFs
+
+**Phase 1 INCLUDES (Smallpdf Parity + Enhancements)**:
+- ✅ Image operations (convert, compress, resize, crop, rotate)
+- ✅ PDF compression with quality control
+- ✅ PDF conversion (to/from Word, Excel, PowerPoint, images)
+- ✅ PDF merge, split, extract, organize, rotate pages
+- ✅ PDF annotation (text boxes, highlights, shapes)
+- ✅ PDF watermarking (text and image watermarks)
+- ✅ PDF cropping and redaction
+- ✅ PDF reader/viewer with search
+- ✅ E-signatures (draw, upload, type)
+- ✅ PDF forms (fill, create form fields)
+- ✅ PDF security (unlock, protect, flatten)
+- ✅ AI tools (summarize, translate, chat with PDF, question generator)
+- ✅ OCR for searchable PDFs
+- ✅ Document edge detection and perspective correction
+- ✅ Government document auto-formatting templates
+- ✅ Document details replacement
+- ✅ Batch processing (5 files free tier)
+- ✅ Multi-step workflows with undo/redo
+- ✅ Workflow presets
+- ✅ Tool navigation and horizontal file cards UI
 
 **Phase 2 Enhancements** for Document Details Replacement:
 - Client-side (offline) processing for DOCX/PPT field detection and replacement using browser libraries
@@ -417,14 +518,56 @@ These features are planned for Phase 2 once Phase 1 MVP is stable and validated 
 
 ## Dependencies
 
-- Client-side processing libraries (browser-image-compression, pdf-lib, jszip)
-- Server-side document processing (Phase 1): LibreOffice/Apache POI for DOCX/PPT text extraction and replacement
-- Government document specification data (dimension, size, format requirements)
-- Responsive design framework (Tailwind CSS)
-- File upload/download handling
-- Browser File API and Canvas API support
-- Browser localStorage for profile management
-- **Phase 2 mobile dependencies**: React Native or Capacitor for native app development, iOS/Android file provider APIs, camera/photo library APIs, share extension SDKs
+**Client-Side Processing Libraries**:
+- `browser-image-compression` - Image compression with quality control
+- `pdf-lib` - PDF manipulation (merge, split, extract, annotate, watermark, forms, security)
+- `jszip` - ZIP archive generation for batch downloads
+- `pako` - Compression utilities
+- `heic2any` - HEIC image format conversion
+- `Tesseract.js` - OCR for searchable PDFs (lazy-loaded, ~2-4MB)
+- `jsfeat` - Edge detection for document scanning (~200KB)
+- `perspective-transform` - Perspective correction (~10KB)
+- `signature_pad` - Signature drawing canvas
+- `pdf.js` - PDF rendering and viewer
+- `pdfjs-dist` - PDF text extraction and search
+
+**Server-Side Processing (Phase 1)**:
+- `Sharp` - Server-side image processing fallback
+- `LibreOffice` or `Apache POI` - Office document conversion (DOCX/XLSX/PPTX ↔ PDF)
+- `pdf-parse` - PDF text extraction for field detection
+- `mammoth` - DOCX to HTML conversion
+- `xlsx` - Excel file parsing and generation
+- `officegen` - Office document generation
+- OpenAI API or Anthropic Claude API - AI features (summarize, translate, chat, questions)
+- Google Translate API or DeepL API - Translation service
+
+**Framework & Infrastructure**:
+- Next.js 14+ with App Router
+- React 18+ with TypeScript strict mode
+- Tailwind CSS 3+ for styling
+- Zustand for state management
+- React Hook Form + Zod for form validation
+- Vercel for deployment (CDN, Edge Functions)
+- Cloudflare for static asset CDN
+
+**Storage**:
+- Browser localStorage - User profiles, workflow presets
+- Browser IndexedDB - File history (24h expiry), AI conversation history
+- Temporary server storage - Encrypted uploads (<5min TTL)
+
+**Government Document Data**:
+- JSON specification files for Indian government document templates (DL, Passport, Aadhar, PAN, OCI)
+
+**APIs & Services**:
+- LLM API (OpenAI GPT-4 or Claude) for AI features
+- Translation API for multi-language PDF translation
+- Email service (SendGrid/Postmark) for signature requests (Phase 2)
+
+**Phase 2 Mobile Dependencies**:
+- React Native or Capacitor for native app development
+- iOS/Android file provider APIs
+- Camera/photo library APIs
+- Share extension SDKs
 
 ## Open Questions (Phase 2)
 

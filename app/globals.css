@@ -30,6 +30,13 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+
+    /* Theme colors (customizable via Settings) */
+    --color-primary: #06b6d4;
+    --color-secondary: #0891b2;
+    --color-accent: #3b82f6;
+    --color-background: #fafbfc;
+    --color-surface: #ffffff;
   }
 
   * {
@@ -37,8 +44,10 @@
   }
 
   body {
-    @apply bg-secondary-50 text-secondary-900;
+    @apply text-secondary-900;
     font-feature-settings: 'rlig' 1, 'calt' 1;
+    background: var(--color-background);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   }
 
   /* Custom scrollbar */
@@ -92,10 +101,70 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+
+    /* Dark theme will override these via themeStore */
+    --color-background: #0f172a;
+    --color-surface: #1e293b;
+  }
+
+  .dark body {
+    color: #e2e8f0;
+  }
+
+  .dark .workspace-header,
+  .dark .workspace-sidebar,
+  .dark .workspace-card {
+    background: var(--color-surface);
+    border-color: #334155;
   }
 }
 
 @layer components {
+  /* Workspace Layout */
+  .workspace-header {
+    @apply fixed top-0 left-0 right-0 h-16 bg-white border-b border-secondary-200 z-50 flex items-center justify-between px-6;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.98);
+  }
+
+  .workspace-sidebar {
+    @apply fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-secondary-200 overflow-y-auto;
+    box-shadow: 1px 0 3px 0 rgba(0, 0, 0, 0.03);
+  }
+
+  .workspace-main {
+    @apply ml-64 mt-16 min-h-screen p-8;
+    animation: fadeInUp 0.4s ease-out;
+  }
+
+  /* Modern button styles - Updated gradient design */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white transition-all duration-200;
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+    box-shadow: 0 4px 12px 0 rgba(99, 102, 241, 0.3);
+  }
+
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #4f46e5 0%, #9333ea 50%, #db2777 100%);
+    box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-all duration-200 bg-white border-2 border-gray-200;
+    color: #4b5563;
+  }
+
+  .btn-secondary:hover {
+    @apply border-indigo-300 bg-indigo-50;
+    color: #4338ca;
+  }
+
   /* Privacy indicator badges */
   .badge-client-side {
     @apply inline-flex items-center gap-1 rounded-full bg-client-side/10 px-2 py-1 text-xs font-medium text-client-side;
@@ -105,17 +174,60 @@
     @apply inline-flex items-center gap-1 rounded-full bg-server-side/10 px-2 py-1 text-xs font-medium text-server-side;
   }
 
-  /* File upload zone */
+  /* File upload zone - Modern gradient style */
   .upload-zone {
-    @apply relative flex min-h-[300px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-secondary-300 bg-white p-8 transition-colors hover:border-primary-500 hover:bg-primary-50/50;
+    @apply relative flex min-h-[280px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-10 transition-all duration-300 bg-gradient-to-br;
+    border-color: #c7d2fe;
+    background-image: linear-gradient(to bottom right, #faf5ff, #ffffff, #eff6ff);
+    box-shadow: 0 2px 8px 0 rgba(99, 102, 241, 0.08);
+  }
+
+  .upload-zone:hover {
+    border-color: #a5b4fc;
+    background-image: linear-gradient(to bottom right, #f5f3ff, #ffffff, #dbeafe);
+    box-shadow: 0 8px 24px 0 rgba(99, 102, 241, 0.15);
+    transform: translateY(-2px);
   }
 
   .upload-zone.dragging {
-    @apply border-primary-500 bg-primary-50;
+    border-color: #818cf8;
+    background-image: linear-gradient(to bottom right, #ede9fe, #f0f9ff, #dbeafe);
+    box-shadow: 0 12px 32px 0 rgba(99, 102, 241, 0.25);
+    transform: scale(1.02);
   }
 
   .upload-zone.disabled {
-    @apply cursor-not-allowed opacity-50 hover:border-secondary-300 hover:bg-white;
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  /* Card styles - Modern theme */
+  .workspace-card {
+    @apply bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-300;
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.04);
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .workspace-card:hover {
+    border-color: #e0e7ff;
+    box-shadow: 0 8px 24px 0 rgba(99, 102, 241, 0.12);
+    transform: translateY(-2px);
+  }
+
+  /* Tool card with gradient accent */
+  .tool-card {
+    @apply bg-white rounded-xl border border-secondary-200 p-5 transition-all duration-200 cursor-pointer;
+  }
+
+  .tool-card:hover {
+    @apply border-cyan-400;
+    box-shadow: 0 4px 12px 0 rgba(6, 182, 212, 0.15);
+    transform: translateY(-2px);
+  }
+
+  .tool-card.active {
+    @apply border-cyan-500;
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+    box-shadow: 0 4px 12px 0 rgba(6, 182, 212, 0.2);
   }
 
   /* Preview panel */
@@ -194,11 +306,21 @@
 
   /* Animation utilities */
   .animate-in {
-    animation: fadeIn 0.2s ease-in;
+    animation: fadeInUp 0.8s ease-out;
   }
 
   .animate-out {
     animation: fadeOut 0.2s ease-out;
+  }
+
+  /* Floating animation for upload zone */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
   }
 
   /* Transition utilities */
@@ -239,6 +361,17 @@
   }
 }
 
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes fadeOut {
   from {
     opacity: 1;
@@ -270,6 +403,17 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Hide scrollbar utility */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari, Opera */
   }
 }
 
