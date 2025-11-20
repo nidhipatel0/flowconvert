@@ -342,3 +342,57 @@ export async function getPDFMetadata(blob: Blob): Promise<{
     );
   }
 }
+
+/**
+ * Crop PDF pages
+ */
+export interface CropPDFParameters {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  pageNumbers?: number[]; // If not provided, apply to all pages
+}
+
+export async function cropPDF(
+  blob: Blob,
+  params: CropPDFParameters
+): Promise<Blob> {
+  try {
+    const arrayBuffer = await blob.arrayBuffer();
+    const pdf = await PDFDocument.load(arrayBuffer);
+    const pages = pdf.getPages();
+
+    // Determine which pages to crop
+    const pagesToCrop = params.pageNumbers || Array.from({ length: pages.length }, (_, i) => i + 1);
+
+    // Crop each specified page
+    pagesToCrop.forEach((pageNum) => {
+      if (pageNum < 1 || pageNum > pages.length) {
+        console.warn(`Page ${pageNum} out of range, skipping`);
+        return;
+      }
+
+      const page = pages[pageNum - 1];
+      if (!page) return;
+
+      const { width: pageWidth, height: pageHeight } = page.getSize();
+
+      // Convert crop coordinates (top-left origin) to PDF coordinates (bottom-left origin)
+      const pdfY = pageHeight - params.y - params.height;
+
+      // Set the crop box (visible area)
+      page.setCropBox(params.x, pdfY, params.width, params.height);
+
+      // Also set media box to the same size to ensure proper rendering
+      page.setMediaBox(params.x, pdfY, params.width, params.height);
+    });
+
+    const pdfBytes = await pdf.save();
+    return new Blob([pdfBytes as BlobPart], { type: 'application/pdf' });
+  } catch (error) {
+    throw new Error(
+      `PDF crop failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}

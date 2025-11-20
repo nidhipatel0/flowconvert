@@ -67,6 +67,29 @@ const nextConfig = {
 
   // Webpack configuration
   webpack: (config, { isServer }) => {
+    // Exclude pdfjs-dist from server-side bundling (client-only library)
+    if (isServer) {
+      config.externals = config.externals || [];
+      if (Array.isArray(config.externals)) {
+        config.externals.push('pdfjs-dist');
+      } else {
+        // If externals is a function or object, wrap it
+        const originalExternals = config.externals;
+        config.externals = [
+          originalExternals,
+          'pdfjs-dist',
+        ];
+      }
+    } else {
+      // Client-side: ensure pdfjs-dist is not processed incorrectly
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+      };
+    }
+
     // Handle worker files
     config.module.rules.push({
       test: /\.worker\.(js|ts)$/,
@@ -80,7 +103,10 @@ const nextConfig = {
     };
 
     // Ignore source map warnings from third-party packages
-    config.ignoreWarnings = [/Failed to parse source map/];
+    config.ignoreWarnings = [
+      /Failed to parse source map/,
+      /pdfjs-dist/,
+    ];
 
     return config;
   },

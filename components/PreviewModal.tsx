@@ -45,87 +45,56 @@ export function PreviewModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-secondary-200">
-          <h2 className="text-lg font-semibold text-secondary-900">{title}</h2>
-          <button
-            onClick={onClose}
-            className="text-secondary-500 hover:text-secondary-700 text-xl font-bold"
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Preview Content */}
-        <div className="flex-1 overflow-auto p-6">
-          <div className="space-y-4">
-            {/* File Info */}
-            {(originalSize || newSize) && (
-              <div className="bg-secondary-50 border border-secondary-200 rounded-lg p-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  {originalFileName && (
-                    <div>
-                      <span className="text-secondary-600">Original:</span>
-                      <p className="font-medium text-secondary-900 truncate">{originalFileName}</p>
-                    </div>
-                  )}
-                  {newFileName && (
-                    <div>
-                      <span className="text-secondary-600">New:</span>
-                      <p className="font-medium text-secondary-900 truncate">{newFileName}</p>
-                    </div>
-                  )}
-                  {originalSize && (
-                    <div>
-                      <span className="text-secondary-600">Original Size:</span>
-                      <p className="font-medium text-secondary-900">{formatSize(originalSize)}</p>
-                    </div>
-                  )}
-                  {newSize && (
-                    <div>
-                      <span className="text-secondary-600">New Size:</span>
-                      <p className="font-medium text-secondary-900">{formatSize(newSize)}</p>
-                    </div>
-                  )}
-                  {originalSize && newSize && originalSize !== newSize && (
-                    <div className="col-span-2">
-                      <span className="text-secondary-600">Change:</span>
-                      <span className={`ml-2 font-semibold ${newSize < originalSize ? 'text-green-600' : 'text-orange-600'}`}>
-                        {newSize < originalSize ? '↓' : '↑'} {Math.abs(((newSize - originalSize) / originalSize) * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                  )}
-                </div>
+      <div className="bg-white rounded-lg shadow-xl max-w-[95vw] w-full mx-4 max-h-[95vh] overflow-hidden flex flex-col">
+        {/* Header - Compact */}
+        <div className="flex items-center justify-between px-4 py-2 border-b border-secondary-200 flex-shrink-0">
+          <h2 className="text-base font-semibold text-secondary-900">{title}</h2>
+          <div className="flex items-center gap-3">
+            {/* Compact file info in header */}
+            {fileType === 'pdf' && (originalSize || newSize) && (
+              <div className="flex items-center gap-2 text-xs text-secondary-600">
+                {originalSize && newSize && originalSize !== newSize && (
+                  <span className={`font-semibold ${newSize < originalSize ? 'text-green-600' : 'text-orange-600'}`}>
+                    {newSize < originalSize ? '↓' : '↑'} {Math.abs(((newSize - originalSize) / originalSize) * 100).toFixed(1)}%
+                  </span>
+                )}
+                {newSize && <span>{formatSize(newSize)}</span>}
               </div>
             )}
-
-            {/* Preview */}
-            <div className="border border-secondary-200 rounded-lg overflow-hidden bg-secondary-50 p-4">
-              <p className="text-xs font-medium text-secondary-700 mb-3">Preview:</p>
-              {fileType === 'image' && (
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className="w-full h-auto max-h-[500px] object-contain mx-auto bg-white"
-                />
-              )}
-              {fileType === 'pdf' && (
-                <iframe
-                  src={previewUrl}
-                  className="w-full h-[500px] bg-white rounded"
-                  title="PDF Preview"
-                />
-              )}
-            </div>
+            <button
+              onClick={onClose}
+              className="text-secondary-500 hover:text-secondary-700 text-xl font-bold"
+            >
+              ×
+            </button>
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-secondary-200 bg-secondary-50">
+        {/* Preview Content - Maximized */}
+        <div className="flex-1 overflow-auto p-2">
+          {fileType === 'image' && (
+            <div className="flex items-center justify-center h-full">
+              <img
+                src={previewUrl}
+                alt="Preview"
+                className="max-w-full max-h-full object-contain bg-white rounded"
+              />
+            </div>
+          )}
+          {fileType === 'pdf' && (
+            <iframe
+              src={previewUrl}
+              className="w-full h-full min-h-[80vh] bg-white rounded"
+              title="PDF Preview"
+            />
+          )}
+        </div>
+
+        {/* Footer Actions - Compact */}
+        <div className="flex items-center justify-end gap-3 px-4 py-2 border-t border-secondary-200 bg-secondary-50 flex-shrink-0">
           <button
             onClick={onClose}
-            className="btn-secondary px-6 py-2"
+            className="btn-secondary px-4 py-1.5 text-sm"
           >
             Cancel
           </button>
@@ -134,7 +103,7 @@ export function PreviewModal({
               onConfirm();
               onClose();
             }}
-            className="btn-primary px-6 py-2"
+            className="btn-primary px-4 py-1.5 text-sm"
           >
             Download
           </button>

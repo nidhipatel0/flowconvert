@@ -28,6 +28,29 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
+### User Story 0 - Dark Theme Dashboard with Horizontal Toolbar & Dynamic Tools (Priority: P0) 🎯 CRITICAL MVP
+
+A user visits FlowConvert and sees a professional dark teal dashboard (#0d3333) matching the reference design. At the top are tabs ("Images", "Pdf", "Compress") with Preview/Download buttons on the right. Below the tabs is a horizontal toolbar with category labels (CONVERT, SIZE CHANGE, EDIT, COMPRESS) and icon-based tool buttons underneath each category - these tools change dynamically based on the selected tab. For example, when "Images" is active, they see Convert (PNG↔JPG, etc.), Size Change (Resize, Crop, Compress), and Edit (Rotate, Flip, Filters) tools. When "Pdf" is active, they see all PDF-specific tools (Merge, Split, OCR, E-Sign, Annotate, etc.). The central area shows "Drop your files here" with "or click to browse from your computer" below it. Once the user uploads files, the upload zone disappears and transforms into a workspace area with file cards/thumbnails, and an "Add More Files" button appears in the top-right corner. A "100% Private & Secure" badge with explanation text is prominently displayed, reassuring users about local processing.
+
+**Why this priority**: Visual design and layout are the first impression. The horizontal toolbar with context-aware tool visibility (showing only relevant tools per tab) prevents overwhelming users while keeping all functions discoverable. The workspace transformation after upload maximizes screen space for editing. This professional, clean interface directly impacts user trust and engagement.
+
+**Independent Test**: Load homepage → Verify dark teal background → Verify tabs at top → Verify horizontal toolbar with dynamic tools → Switch between tabs and confirm tool categories change → Upload a file → Verify upload zone disappears and workspace appears → Verify "Add More Files" button present → Confirm all previously built tools (e-sign, OCR, etc.) are visible in appropriate tabs
+
+**Acceptance Scenarios**:
+
+1. **Given** a user visits FlowConvert homepage, **When** the page loads, **Then** the background is dark teal (#0d3333) and the interface matches the reference design layout
+2. **Given** a user views the top bar, **When** they look at navigation, **Then** tabs ("Images", "Pdf", "Compress") are visible on the left with "Preview" and "Download" buttons on the right
+3. **Given** a user views the horizontal toolbar below tabs, **When** "Images" tab is active, **Then** they see category labels (CONVERT, SIZE CHANGE, EDIT) with relevant tool icons (PNG→JPG, Resize, Crop, Rotate, Flip, Filters, etc.) displayed below each category
+4. **Given** a user clicks the "Pdf" tab, **When** the tab activates, **Then** the toolbar updates to show PDF-specific categories (CONVERT, COMPRESS, ORGANIZE, EDIT, SIGN, SECURE, OCR, AI) with tools like Merge, Split, Compress PDF, E-Signature, OCR, Annotate, Watermark, Protect, Unlock, Chat with PDF, etc.
+5. **Given** a user clicks the "Compress" tab, **When** the tab activates, **Then** the toolbar shows compression tools (Image Compress, PDF Compress, Batch Compress, Target Size) with quality control options
+6. **Given** a user views the central area before uploading, **When** they see the upload zone, **Then** primary text "Drop your files here" and secondary text "or click to browse from your computer" are displayed
+7. **Given** a user uploads one or more files, **When** upload completes, **Then** the upload zone disappears and the central area transforms into a workspace showing file cards/thumbnails with file details
+8. **Given** a user has uploaded files and is in workspace mode, **When** they want to add more files, **Then** an "Add More Files" button is visible in the top-right corner of the workspace area
+9. **Given** a user concerned about privacy, **When** they view the interface, **Then** a "100% Private & Secure" badge with lock icon and explanation text "All processing happens locally in your browser. Your files never leave your computer." is prominently displayed
+10. **Given** a user browses through all tabs, **When** they review available tools, **Then** ALL previously implemented functions (E-Signature, OCR, Document Replacement, Government Templates, Image-to-PDF, Batch Processing, Workflow Presets, PDF Annotation, Watermark, Form Filling, etc.) are visible and accessible in their respective tab categories with no functions hidden or forgotten
+
+---
+
 ### User Story 1 - Quick Single File Edit (Priority: P1) 🎯 MVP
 
 A user needs to quickly resize and compress a photo for social media upload. They visit FlowConvert, drag their 5MB photo, select "Resize" from the toolbar, choose Instagram Story dimensions (1080x1920), enable compression, preview the result, and download the optimized 800KB file - all within 30 seconds.

@@ -26,7 +26,18 @@
       "Bash(taskkill //F //PID 70804)",
       "Bash(taskkill:*)",
       "Bash(if not exist \"lib\\types\" mkdir \"lib\\types\")",
-      "Bash(if not exist \"app\\api\\process\\document\" mkdir \"app\\api\\process\\document\")"
+      "Bash(if not exist \"app\\api\\process\\document\" mkdir \"app\\api\\process\\document\")",
+      "Bash(test:*)",
+      "Bash(if not exist \"components\\navigation\" mkdir \"components\\navigation\")",
+      "Bash(powershell.exe -Command \"if (!(Test-Path ''components\\navigation'')) { New-Item -ItemType Directory -Path ''components\\navigation'' -Force }\")",
+      "Bash(powershell.exe -Command \"Stop-Process -Id 95828 -Force; Stop-Process -Id 89932 -Force\")",
+      "Bash(powershell.exe:*)",
+      "Bash(dir:*)",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(npx tsc:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(timeout /t 10 /nobreak)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

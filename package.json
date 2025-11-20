@@ -45,7 +45,7 @@
     "officegen": "^0.6.5",
     "pako": "^2.1.0",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^5.4.296",
+    "pdfjs-dist": "^5.4.394",
     "perspective-transform": "^1.1.3",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",

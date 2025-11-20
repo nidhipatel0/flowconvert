@@ -28,6 +28,10 @@ export interface EditorState {
   operations: Map<string, Operation>;
   operationQueue: string[]; // Array of operation IDs to execute in order
 
+  // History for undo/redo
+  fileHistory: Map<string, Blob[]>; // Undo stack for each file
+  fileRedoHistory: Map<string, Blob[]>; // Redo stack for each file
+
   // UI state
   isProcessing: boolean;
   processingProgress: number; // 0-100
@@ -37,6 +41,14 @@ export interface EditorState {
 
   // Error handling
   lastError: string | null;
+
+  // OCR state
+  ocrResult: string | null;
+  ocrConfidence: number;
+  ocrProcessingTime: number;
+  ocrSelectedPage: number;
+  ocrIsProcessing: boolean;
+  ocrProgress: number;
 
   // Actions - File management
   addFile: (file: Omit<File, 'id' | 'uploadedAt' | 'state' | 'operations'>) => string;
@@ -78,6 +90,12 @@ export interface EditorState {
   toggleGrid: () => void;
   setError: (error: string | null) => void;
 
+  // Actions - OCR
+  setOCRResult: (result: string | null, confidence: number, processingTime: number) => void;
+  setOCRProgress: (progress: number) => void;
+  setOCRProcessing: (isProcessing: boolean) => void;
+  clearOCRResult: () => void;
+
   // Getters
   getFile: (fileId: string) => File | undefined;
   getActiveFile: () => File | undefined;
@@ -99,24 +117,65 @@ export const useEditorStore = create<EditorState>()(
       selectedFileIds: [],
       operations: new Map(),
       operationQueue: [],
+      fileHistory: new Map(),
+      fileRedoHistory: new Map(),
       isProcessing: false,
       processingProgress: 0,
       previewMode: 'split',
       showGrid: false,
       zoomLevel: 100,
       lastError: null,
+      ocrResult: null,
+      ocrConfidence: 0,
+      ocrProcessingTime: 0,
+      ocrSelectedPage: 1,
+      ocrIsProcessing: false,
+      ocrProgress: 0,
 
       // File management actions
       addFile: (fileInput) => {
         const fileId = uuidv4();
+        // Use originalFile if provided (File object), otherwise create Blob from data
+        let originalFile: Blob;
+        if ((fileInput as any).originalFile instanceof File) {
+          // If originalFile is a File, use it directly (File extends Blob)
+          originalFile = (fileInput as any).originalFile;
+          console.log('Preserving File object as originalFile:', {
+            name: originalFile instanceof globalThis.File ? (originalFile as globalThis.File).name : 'N/A',
+            size: originalFile.size,
+            type: originalFile.type
+          });
+        } else if ((fileInput as any).originalFile instanceof Blob) {
+          // If originalFile is already a Blob, use it
+          originalFile = (fileInput as any).originalFile;
+        } else {
+          // Otherwise, create Blob from data
+          originalFile = fileInput.data instanceof Blob 
+            ? fileInput.data 
+            : new Blob([fileInput.data], { type: fileInput.type });
+        }
+        
+        // Create file object, ensuring originalFile is set correctly
+        const { originalFile: _, ...restInput } = fileInput as any;
         const file: File = {
-          ...fileInput,
+          ...restInput,
           id: fileId,
           uploadedAt: new Date(),
           state: FileState.UPLOADED,
           operations: [],
-          originalFile: fileInput.data as Blob,
+          originalFile: originalFile,
+          // Generate preview URL if not provided
+          previewUrl: fileInput.previewUrl || URL.createObjectURL(originalFile),
         };
+
+        console.log('File added to store:', {
+          id: fileId,
+          name: file.name,
+          format: file.format,
+          hasOriginalFile: !!file.originalFile,
+          originalFileType: file.originalFile?.constructor?.name,
+          originalFileSize: file.originalFile?.size
+        });
 
         set((state) => {
           const newFiles = new Map(state.files);
@@ -138,14 +197,47 @@ export const useEditorStore = create<EditorState>()(
 
           fileInputs.forEach((fileInput) => {
             const fileId = uuidv4();
+            // Use originalFile if provided (File object), otherwise create Blob from data
+            let originalFile: Blob;
+            if ((fileInput as any).originalFile instanceof File) {
+              // If originalFile is a File, use it directly (File extends Blob)
+              originalFile = (fileInput as any).originalFile;
+              console.log('Preserving File object as originalFile:', {
+                name: originalFile instanceof globalThis.File ? (originalFile as globalThis.File).name : 'N/A',
+                size: originalFile.size,
+                type: originalFile.type
+              });
+            } else if ((fileInput as any).originalFile instanceof Blob) {
+              // If originalFile is already a Blob, use it
+              originalFile = (fileInput as any).originalFile;
+            } else {
+              // Otherwise, create Blob from data
+              originalFile = fileInput.data instanceof Blob 
+                ? fileInput.data 
+                : new Blob([fileInput.data], { type: fileInput.type });
+            }
+            
+            // Create file object, ensuring originalFile is set correctly
+            const { originalFile: _, ...restInput } = fileInput as any;
             const file: File = {
-              ...fileInput,
+              ...restInput,
               id: fileId,
               uploadedAt: new Date(),
               state: FileState.UPLOADED,
               operations: [],
-              originalFile: fileInput.data as Blob,
+              originalFile: originalFile,
+              // Generate preview URL if not provided
+              previewUrl: fileInput.previewUrl || URL.createObjectURL(originalFile),
             };
+
+            console.log('File added to store:', {
+              id: fileId,
+              name: file.name,
+              format: file.format,
+              hasOriginalFile: !!file.originalFile,
+              originalFileType: file.originalFile?.constructor?.name,
+              originalFileSize: file.originalFile?.size
+            });
 
             newFiles.set(fileId, file);
             fileIds.push(fileId);
@@ -163,11 +255,17 @@ export const useEditorStore = create<EditorState>()(
       removeFile: (fileId) => {
         set((state) => {
           const newFiles = new Map(state.files);
+          const file = state.files.get(fileId);
+          
+          // Revoke preview URL to free memory
+          if (file?.previewUrl) {
+            URL.revokeObjectURL(file.previewUrl);
+          }
+          
           newFiles.delete(fileId);
 
           // Remove file's operations
           const newOperations = new Map(state.operations);
-          const file = state.files.get(fileId);
           file?.operations.forEach((opId) => newOperations.delete(opId));
 
           // Update active file if removed
@@ -196,6 +294,14 @@ export const useEditorStore = create<EditorState>()(
       },
 
       clearFiles: () => {
+        // Revoke all preview URLs before clearing
+        const { files } = get();
+        files.forEach((file) => {
+          if (file.previewUrl) {
+            URL.revokeObjectURL(file.previewUrl);
+          }
+        });
+        
         set({
           files: new Map(),
           operations: new Map(),
@@ -283,15 +389,41 @@ export const useEditorStore = create<EditorState>()(
             return state;
           }
 
+          // Save current state to history before updating
+          const currentBlob = file.data instanceof Blob ? file.data : new Blob([file.data], { type: file.type });
+          const history = state.fileHistory.get(fileId) || [];
+          const newHistory = [...history, currentBlob].slice(-10); // Keep last 10 states
+          const newFileHistory = new Map(state.fileHistory);
+          newFileHistory.set(fileId, newHistory);
+
+          // Clear redo history when new change is made
+          const newFileRedoHistory = new Map(state.fileRedoHistory);
+          newFileRedoHistory.delete(fileId);
+
+          // Revoke old preview URL to prevent memory leaks
+          if (file.previewUrl) {
+            URL.revokeObjectURL(file.previewUrl);
+          }
+
+          // Create new preview URL from updated data
+          const blob = data instanceof Blob ? data : new Blob([data], { type: file.type });
+          const newPreviewUrl = URL.createObjectURL(blob);
+
           const updatedFile = {
             ...file,
             data,
+            originalFile: blob, // Update originalFile as well so download uses cropped version
+            previewUrl: newPreviewUrl,
             state: FileState.READY,
           };
           const newFiles = new Map(state.files);
           newFiles.set(fileId, updatedFile);
 
-          return { files: newFiles };
+          return { 
+            files: newFiles,
+            fileHistory: newFileHistory,
+            fileRedoHistory: newFileRedoHistory,
+          };
         });
       },
 
@@ -421,14 +553,112 @@ export const useEditorStore = create<EditorState>()(
         set({ isProcessing: false, processingProgress: 0 });
       },
 
-      undoOperation: (_fileId) => {
-        // TODO: Implement undo logic in Phase 2
-        console.warn('Undo not yet implemented');
+      undoOperation: (fileId) => {
+        set((state) => {
+          const file = state.files.get(fileId);
+          if (!file) {
+            return state;
+          }
+
+          const history = state.fileHistory.get(fileId);
+          if (!history || history.length === 0) {
+            return state;
+          }
+
+          // Get previous state from history
+          const previousBlob = history[history.length - 1];
+          const newHistory = history.slice(0, -1);
+
+          // Save current state to redo history
+          const currentBlob = file.data instanceof Blob ? file.data : new Blob([file.data], { type: file.type });
+          const redoHistory = state.fileRedoHistory.get(fileId) || [];
+          const newRedoHistory = [...redoHistory, currentBlob].slice(-10);
+
+          // Update file with previous state
+          const newFileHistory = new Map(state.fileHistory);
+          newFileHistory.set(fileId, newHistory);
+
+          const newFileRedoHistory = new Map(state.fileRedoHistory);
+          newFileRedoHistory.set(fileId, newRedoHistory);
+
+          // Revoke old preview URL
+          if (file.previewUrl) {
+            URL.revokeObjectURL(file.previewUrl);
+          }
+
+          // Create new preview URL from previous state
+          const newPreviewUrl = URL.createObjectURL(previousBlob);
+
+          const updatedFile = {
+            ...file,
+            data: previousBlob,
+            originalFile: previousBlob,
+            previewUrl: newPreviewUrl,
+            state: FileState.READY,
+          };
+          const newFiles = new Map(state.files);
+          newFiles.set(fileId, updatedFile);
+
+          return {
+            files: newFiles,
+            fileHistory: newFileHistory,
+            fileRedoHistory: newFileRedoHistory,
+          };
+        });
       },
 
-      redoOperation: (_fileId) => {
-        // TODO: Implement redo logic in Phase 2
-        console.warn('Redo not yet implemented');
+      redoOperation: (fileId) => {
+        set((state) => {
+          const file = state.files.get(fileId);
+          if (!file) {
+            return state;
+          }
+
+          const redoHistory = state.fileRedoHistory.get(fileId);
+          if (!redoHistory || redoHistory.length === 0) {
+            return state;
+          }
+
+          // Get next state from redo history
+          const nextBlob = redoHistory[redoHistory.length - 1];
+          const newRedoHistory = redoHistory.slice(0, -1);
+
+          // Save current state back to undo history
+          const currentBlob = file.data instanceof Blob ? file.data : new Blob([file.data], { type: file.type });
+          const history = state.fileHistory.get(fileId) || [];
+          const newHistory = [...history, currentBlob].slice(-10);
+
+          // Update file with next state
+          const newFileHistory = new Map(state.fileHistory);
+          newFileHistory.set(fileId, newHistory);
+
+          const newFileRedoHistory = new Map(state.fileRedoHistory);
+          newFileRedoHistory.set(fileId, newRedoHistory);
+
+          // Revoke old preview URL
+          if (file.previewUrl) {
+            URL.revokeObjectURL(file.previewUrl);
+          }
+
+          // Create new preview URL from next state
+          const newPreviewUrl = URL.createObjectURL(nextBlob);
+
+          const updatedFile = {
+            ...file,
+            data: nextBlob,
+            originalFile: nextBlob,
+            previewUrl: newPreviewUrl,
+            state: FileState.READY,
+          };
+          const newFiles = new Map(state.files);
+          newFiles.set(fileId, updatedFile);
+
+          return {
+            files: newFiles,
+            fileHistory: newFileHistory,
+            fileRedoHistory: newFileRedoHistory,
+          };
+        });
       },
 
       resetFile: (fileId) => {
@@ -474,6 +704,38 @@ export const useEditorStore = create<EditorState>()(
 
       setError: (error) => {
         set({ lastError: error });
+      },
+
+      // OCR actions
+      setOCRResult: (result, confidence, processingTime) => {
+        set({
+          ocrResult: result,
+          ocrConfidence: confidence,
+          ocrProcessingTime: processingTime,
+          ocrIsProcessing: false,
+          ocrProgress: 100,
+        });
+      },
+
+      setOCRProgress: (progress) => {
+        set({ ocrProgress: progress });
+      },
+
+      setOCRProcessing: (isProcessing) => {
+        set({ ocrIsProcessing: isProcessing });
+        if (isProcessing) {
+          set({ ocrProgress: 0 });
+        }
+      },
+
+      clearOCRResult: () => {
+        set({
+          ocrResult: null,
+          ocrConfidence: 0,
+          ocrProcessingTime: 0,
+          ocrProgress: 0,
+          ocrIsProcessing: false,
+        });
       },
 
       // Getters

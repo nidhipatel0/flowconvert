@@ -7,12 +7,367 @@
 
 ## Summary
 
+
+## UI Redesign: Ribbon-Style Navigation
+
+
+## UI Redesign: Fixed Header, Ribbon, and Workspace Layout
+
+The platform UI will use a fixed header at the top of the page, always visible. The header contains:
+- **Logo** (FlowConvert)
+- **Tagline** ("Your files never leave your computer")
+- **Theme toggle** (with color scheme selector: Elegant Blue, Royal Purple, Professional Emerald, Corporate Slate)
+- **Settings/Help**
+
+Below the header is a ribbon navigation bar with organized function groups. The ribbon contains:
+- **Tabs**: Images, PDF, OCR, PDF Editor (not in header)
+- **Functions**: Only the selected tab's functions are visible, organized into groups (CONVERT, SIZE CHANGE, EDIT, COMPRESS, etc.)
+  - Each group has a header (uppercase label)
+  - Functions displayed with icons and text labels
+  - Horizontal scrolling if functions exceed ribbon width
+  - Functions grouped by category to avoid need for second row
+
+Workspace layout:
+- **Left sidebar**: Vertical column showing thumbnails of selected files (images, PDFs, etc.)
+- **Main workspace**: Large preview/editing area for the selected file
+- **Right sidebar**: File actions/details (Preview, Download, file info), only visible when files are selected. Theme toggle remains in header.
+
+When no files are selected, the workspace displays the upload card:
+- **Full-workspace clickable card** with centered upload icon
+- "Drop your files here" message
+- Entire card is clickable (anywhere on the card opens file browser)
+- Supports drag-drop on entire card area
+- Privacy badge and messaging
+- Responsive to screen size
+
+### Color Schemes (Light & Dark Variants)
+1. **Elegant Blue** - Professional blue theme
+2. **Royal Purple** - Purple accent theme
+3. **Professional Emerald** - Green theme (default)
+4. **Corporate Slate** - Slate/gray theme
+
+Light mode: Use black/dark gray text for visibility on light backgrounds
+Dark mode: Use white/light text on dark backgrounds
+
+All function buttons use icons with text for easy navigation. Responsive design for desktop and mobile.
+
+### UI Fixes Phase 1 (Completed 2025-11-14)
+
+### Button Functionality Implementation (Completed 2025-11-14)
+
+**Purpose**: Connect ribbon buttons to their respective tool functions that are already implemented.
+
+**Status**:
+- ✅ Updated MainWorkspace to accept selectedTool prop and conditionally render tool components
+- ✅ Connected PDF merge button (pdf-merge) to PDFTools merge functionality
+- ✅ Connected PDF split button (pdf-split) to PDFTools split functionality
+- ✅ Connected PDF extract button (pdf-extract) to PDFTools extract functionality
+- ✅ Connected PDF compress button (pdf-compress) to PDFTools compress functionality
+- ✅ Connected PDF organise button (pdf-organise) to PDFTools organize tab (rotate/delete pages)
+- ✅ Connected Image to PDF button (convert-pdf) to ImageToPDF convert functionality
+- ✅ Connected E-Sign button (editor-esign) to ESignatureTools functionality
+- ✅ Fixed fileList is not defined error in PDFTools.tsx
+- ✅ Fixed PDF upload functionality (FileUploadZone and FileDetailsSidebar accept PDFs)
+- ✅ Fixed PDF functions not working (all buttons now properly connected)
+- ✅ Moved ImageToPDF options to right sidebar card instead of popup
+- ✅ Made FileDetailsSidebar into a card and made it smaller (w-64 instead of w-72)
+- ✅ Removed preview modal for ImageToPDF - now downloads directly
+
+### Interactive Crop Tool Implementation (In Progress 2025-11-15)
+
+**Purpose**: Add interactive drag-to-crop functionality for images and PDFs with aspect ratio controls.
+
+**Approach**:
+- **Phase 1 (Today)**: Complete image cropping
+  - In-place editing in main workspace (Option B)
+  - Draggable crop overlay with corner/edge handles
+  - Aspect ratio presets: 1:1, 4:3, 16:9, 3:2, Free + Custom input
+  - Real-time dimensions display
+  - Apply/Cancel actions
+  - Support all image formats (PNG, JPG, WebP, GIF, BMP, TIFF)
+
+- **Phase 2 (In Progress)**: PDF cropping
+  - Apply to current page by default
+  - Option to apply to all pages (user confirmation)
+  - Allow different crop areas per page
+  - Page navigation while cropping
+
+**Status - Phase 2 (PDF Cropping - COMPLETE)**:
+- ✅ Created PDF crop processor using pdf-lib (`lib/client-processors/pdf-processor.ts` - `cropPDF` function)
+- ✅ Created PDF crop store for state management (`lib/stores/pdf-crop-store.ts`)
+- ✅ Created PDFCropTool component with page rendering and navigation (`components/pdf-tools/PDFCropTool.tsx`)
+- ✅ Created PDFCropToolSidebar with controls (`components/pdf-tools/PDFCropToolSidebar.tsx`)
+- ✅ Integrated with MainWorkspace (handles 'editor-crop' and 'pdf-crop' tool IDs)
+- ✅ Integrated PDFCropToolSidebar into FileDetailsSidebar
+- ✅ Exported all components from index.ts
+- ⏳ Ready for testing with different PDF files
+
+**Features Implemented - PDF Cropping**:
+- ✅ Interactive crop overlay on PDF pages (reuses CropOverlay from image crop)
+- ✅ Page navigation controls (Previous/Next with page counter)
+- ✅ Aspect ratio presets: 1:1, 4:3, 16:9, 3:2, Free
+- ✅ Custom aspect ratio input
+- ✅ Manual coordinate inputs (X, Y, Width, Height)
+- ✅ **Apply to current page only** (default) ✅
+- ✅ **Apply to all pages** option (checkbox toggle) ✅
+- ✅ Per-page crop area storage (different crop per page) ✅
+- ✅ Real-time dimensions display
+- ✅ Dynamic button text (changes based on apply to all pages setting)
+- ✅ File details card with download button
+- ✅ PDF coordinate conversion (top-left to bottom-left origin)
+
+**Technical Implementation - PDF Cropping**:
+- Created `usePDFCropStore` (Zustand) for PDF-specific crop state
+- Added `cropPDF` function in `pdf-processor.ts`:
+  - Uses pdf-lib's `setCropBox` and `setMediaBox`
+  - Converts coordinates from canvas (top-left) to PDF (bottom-left)
+  - Supports selective page cropping via `pageNumbers` parameter
+- PDF pages rendered to canvas at scale 2x for quality
+- Crop areas stored per-page in Map<number, CropArea>
+- Controls in right sidebar for consistent UX
+
+**Status - Phase 1 (Image Cropping - COMPLETE)**:
+- ✅ Created CropOverlay component with draggable rectangle (`components/image-tools/CropOverlay.tsx`)
+- ✅ Created InteractiveCropTool main component (`components/image-tools/InteractiveCropTool.tsx`)
+- ✅ Created CropToolSidebar for right sidebar controls (`components/image-tools/CropToolSidebar.tsx`)
+- ✅ Created shared crop state store (`lib/stores/crop-store.ts`)
+- ✅ Integrated with MainWorkspace (handles 'crop' and 'editor-crop' tool IDs)
+- ✅ Integrated CropToolSidebar into FileDetailsSidebar
+- ✅ Connected crop button in ToolNavigation (already existed)
+- ✅ Fixed updateFileData to update both preview and originalFile
+- ✅ Exported all components from index.ts
+- ✅ Ready for testing with different image formats
+
+**Features Implemented**:
+- ✅ Draggable crop rectangle with corner and edge handles
+- ✅ Aspect ratio presets: 1:1, 4:3, 16:9, 3:2, Free (in right sidebar)
+- ✅ Custom aspect ratio input (e.g., 21:9) (in right sidebar)
+- ✅ Manual coordinate inputs (X, Y, Width, Height) (in right sidebar)
+- ✅ Real-time dimension display
+- ✅ Apply Crop button (in right sidebar) - updates file preview and download
+- ✅ Cancel button (in right sidebar) - resets crop area
+- ✅ Constrained to image boundaries
+- ✅ Responsive container sizing
+- ✅ Shared state between workspace and sidebar using Zustand
+
+**Technical Implementation**:
+- Created `useCropStore` (Zustand) to share crop state between InteractiveCropTool and CropToolSidebar
+- Fixed `updateFileData` in editor-store.ts to:
+  - Revoke old preview URL to prevent memory leaks
+  - Create new preview URL from cropped data
+  - Update originalFile so download uses cropped version
+- Controls moved to right sidebar for cleaner workspace
+- Main workspace shows only crop canvas and help text
+
+**Technical Changes**:
+- Updated `MainWorkspace.tsx`: Added selectedTool prop, conditionally renders PDFTools, ImageToPDF, or ESignatureTools based on selected tool
+- Updated `PDFTools.tsx`: Added initialTab prop to allow opening specific tab when tool is selected, fixed fileList variable reference
+- Updated `app/(home)/page.tsx`: Passes selectedTool state to MainWorkspace and FileDetailsSidebar
+- Created `ImageToPDFSidebar.tsx`: New compact sidebar component for Image to PDF conversion options
+- Updated `FileDetailsSidebar.tsx`: 
+  - Made sidebar smaller (w-64 instead of w-72)
+  - Made File Details into a card with smaller text and spacing
+  - Added ImageToPDFSidebar integration when convert-pdf tool is selected
+  - Updated file input accept attribute to include .txt
+- Updated `FileUploadZone.tsx`: Updated accept attribute to include .txt
+- Tool components (PDFTools, ImageToPDF, ESignatureTools) already have their functions implemented and working
+
+### UI Fixes Phase 2 (Completed 2025-11-14)
+
+**Issue 1: File Upload Zone (Area 3)**
+- ✅ Fixed: The entire upload zone area is now a full-workspace clickable card (end-to-end)
+- ✅ The card covers the entire workspace area when no files are selected
+- ✅ Entire card is clickable to open file browser
+- ✅ Supports drag-drop on entire card area
+- ✅ Visual feedback on drag-over state
+
+**Issue 2: File Selection Not Working**
+- ✅ Fixed: FileUploadZone now properly connects to editor store
+- ✅ Files are added to store when selected via click or drag-drop
+- ✅ Preview URLs are automatically generated for all files
+- ✅ Files appear in FileCardSidebar (area 4) after selection
+- ✅ File previews work correctly in MainWorkspace
+
+**Issue 3: UI Colors, Text, Dark Mode, and Color Schemes**
+- ✅ Fixed: Added dark-teal color palette to Tailwind config
+- ✅ Fixed: Components now use CSS variables for theme-aware colors
+- ✅ Fixed: Text colors properly adapt to light/dark mode
+- ✅ Fixed: Color schemes (Elegant Blue, Royal Purple, Professional Emerald, Corporate Slate) work correctly
+- ✅ Fixed: Light mode uses dark text for visibility on light backgrounds
+- ✅ Fixed: Dark mode uses light text for visibility on dark backgrounds
+- ✅ Fixed: Theme store properly applies CSS variables and theme classes
+- ✅ Fixed: RGB values extracted for rgba usage in borders and backgrounds
+
+**Technical Changes:**
+- Updated `FileUploadZone.tsx`: Full-workspace card, file processing, preview URL generation
+- Updated `editor-store.ts`: Preview URL generation and cleanup (revoke on file removal)
+- Updated `themeStore.ts`: RGB extraction for rgba usage, proper CSS variable application
+- Updated `globals.css`: Theme-aware text colors, proper CSS variable usage
+- Updated `tailwind.config.ts`: Added teal and dark-teal color palettes
+- Updated components to use CSS variables instead of hardcoded colors
+
+### UI Fixes Phase 2: Theme Application, Component Updates, Workspace Maximization (Completed 2025-11-14)
+
+**Issue 4: Color Overlapping (Purple/Green Themes)**
+- ✅ Fixed: Theme application - removed inline style conflicts, CSS classes now handle all colors
+- ✅ Fixed: CSS classes properly override and handle light/dark mode variants
+- ✅ Fixed: Default theme mismatch resolved (store and CSS both use Professional Emerald)
+
+**Issue 5: Light/Dark Mode Differentiation**
+- ✅ Fixed: Theme store properly applies CSS classes based on light/dark mode
+- ✅ Fixed: CSS light/dark variants are properly applied via :root.light.theme-{id} selectors
+- ✅ Fixed: RGB values added to all theme CSS classes for rgba() usage
+- ⏳ Pending: Manual testing of all 4 themes in both light and dark modes
+
+**Issue 6: Component Theme Awareness**
+- ✅ Fixed: Updated FileDetailsSidebar to use CSS variables
+- ✅ Fixed: Updated ToolNavigation to use CSS variables
+- ✅ Fixed: Updated FileThumbnailSidebar to use CSS variables
+- ✅ Fixed: Updated FileCardSidebar to use CSS variables
+- ✅ Fixed: Updated FileUploadZone to use CSS variables
+- ✅ Fixed: Updated MainWorkspace to use CSS variables
+- ✅ Fixed: Updated WorkspaceHeader to use CSS variables
+
+**Issue 7: Workspace Maximization**
+- ✅ Fixed: Moved header to footer (below viewport, scroll down to access)
+- ✅ Fixed: Made ribbon collapsible with expand/collapse button
+- ✅ Fixed: Show only compact tabs initially (48px height)
+- ✅ Fixed: Expand ribbon on click to show tool groups
+- ✅ Fixed: Updated workspace padding (48px top for ribbon, no bottom padding)
+
+**Implementation Order:**
+1. ✅ Fix theme application (remove inline style conflicts, ensure CSS classes work)
+2. ✅ Update key components to use CSS variables (FileDetailsSidebar, ToolNavigation, etc.)
+3. ✅ Implement workspace maximization (collapsible ribbon, header to footer)
+
+---
+
+### UI Fixes Phase 3: Enhanced Theming, Ribbon Optimization, PDF Layout (Completed 2025-11-14)
+
+**Issue 8: New Theme Color - Ocean Deep**
+- ✅ Added: "Ocean Deep" theme with vibrant cyan accents (#06b6d4) matching reference UI
+- ✅ Added: Both dark and light mode variants in globals.css
+- ✅ Added: Theme color swatch in ThemeDropdown component
+- ✅ Result: Now 5 total themes available (Ocean Deep, Elegant Blue, Royal Purple, Professional Emerald, Corporate Slate)
+
+**Issue 9: Theme Selection UX**
+- ✅ Converted: Theme dropdown to modal with preview cards
+- ✅ Added: ThemeModal component with visual theme previews
+- ✅ Added: Color swatch display (primary, secondary, accent) for each theme
+- ✅ Added: Active theme indicator with checkmark
+- ✅ Added: ESC key to close modal, click outside to dismiss
+- ✅ Result: Better theme selection experience with visual previews
+
+**Issue 10: Ribbon Size Optimization**
+- ✅ Reduced: Ribbon height from 64px to 50px to match Word UI reference
+- ✅ Reduced: Tool button size from w-16 to w-14, smaller text (text-[10px])
+- ✅ Reduced: Padding and gaps throughout ribbon (py-1, gap-0.5)
+- ✅ Reduced: Group label font size to text-[10px]
+- ✅ Added: Horizontal scrolling with scrollbar-hide for overflow
+- ✅ Result: More compact ribbon similar to Microsoft Word
+
+**Issue 11: Ghost Button Styling**
+- ✅ Updated: Button border-radius to 6px for slightly curved corners
+- ✅ Updated: Hover effects with smooth transitions
+- ✅ Result: Modern, polished button appearance
+
+**Issue 12: Bottom Navigation Bar**
+- ✅ Created: BottomBar component (40px height)
+- ✅ Added: Page indicator showing "currentPage / totalPages"
+- ✅ Added: Previous/Next page navigation buttons
+- ✅ Added: Zoom controls (zoom in, zoom out, fit to width)
+- ✅ Added: Zoom percentage display
+- ✅ Result: Complete bottom navigation bar matching reference UI
+
+**Issue 13: PDF Thumbnail Layout**
+- ✅ Fixed: Thumbnails moved to LEFT sidebar (Area 2)
+- ✅ Fixed: Main PDF page view on right/center (Area 1)
+- ✅ Added: 48px wide thumbnail sidebar with vertical scroll
+- ✅ Added: Clickable page thumbnails with active state highlighting
+- ✅ Added: Page number labels below thumbnails
+- ✅ Removed: Circular action area (Area 3) from PDF view
+- ✅ Result: Clean PDF viewer layout matching reference design
+
+**Technical Changes:**
+- Created `components/ThemeModal.tsx` - Modal theme selector with preview cards
+- Created `components/BottomBar.tsx` - Navigation and zoom controls for bottom of workspace
+- Updated `lib/stores/themeStore.ts` - Added Ocean Deep theme to PRESET_THEMES
+- Updated `app/globals.css` - Added Ocean Deep theme CSS variables (dark + light modes)
+- Updated `components/ThemeDropdown.tsx` - Now triggers modal instead of dropdown
+- Updated `components/ToolNavigation.tsx` - Reduced heights, compact sizing
+- Updated `components/MainWorkspace.tsx` - PDF layout with left thumbnails, bottom bar integration
+- Updated `components/index.ts` - Exported new components (BottomBar, ThemeModal)
+
+**Implementation Order:**
+1. ✅ Added Ocean Deep theme with color swatches
+2. ✅ Converted theme dropdown to modal with previews
+3. ✅ Reduced ribbon size and optimized spacing
+4. ✅ Applied curved corners to ghost buttons
+5. ✅ Created bottom bar with page/zoom controls
+6. ✅ Fixed PDF layout with left thumbnails
+
+---
+
+### UI Fixes Phase 4: Theme Dropdown, PDF Rendering, Ribbon Refactor (In Progress 2025-11-14)
+
+**Purpose**: Convert theme modal back to dropdown, implement PDF.js rendering, refactor ribbon to show operations below tabs
+
+**Implementation Order:**
+1. Convert theme modal to dropdown
+2. Implement PDF.js for PDF rendering
+3. Update ribbon layout (operations below tabs)
+4. Test all changes
+
+**Issue 14: Theme Selection - Dropdown Instead of Modal**
+- [ ] Convert: Theme modal back to dropdown menu from theme icon
+- [ ] Remove: ThemeModal component, use dropdown pattern instead
+- [ ] Add: Dropdown menu with color scheme options (like reference image)
+- [ ] Result: Simpler theme selection matching user expectation
+
+**Issue 15: PDF Rendering with PDF.js**
+- [ ] Integrate: PDF.js library for client-side PDF rendering
+- [ ] Fix: PDF pages not visible in thumbnails
+- [ ] Fix: PDF pages not visible in main workspace
+- [ ] Add: Proper PDF page rendering in both thumbnail sidebar and main view
+- [ ] Result: Users can see PDF pages in all views
+
+**Issue 16: Page Navigation Enhancement**
+- [ ] Update: BottomBar to match Image #2 design exactly
+- [ ] Ensure: Page counter shows "1 / 15" format
+- [ ] Ensure: Previous/next navigation arrows work correctly
+- [ ] Ensure: Zoom controls (zoom in, zoom out, fit to page) functional
+- [ ] Result: Complete page navigation matching reference design
+
+**Issue 17: Ribbon Layout Refactor**
+- [ ] Keep: Category tabs (CROP, CONVERT, DIMENSION) at top
+- [ ] Change: Show operations as horizontal ribbon below tabs (not dropdown)
+- [ ] Add: Vertical scroll when operations exceed visible area
+- [ ] Remove: Dropdown behavior from ribbon
+- [ ] Result: Normal ribbon layout with always-visible operations
+
+**Technical Changes:**
+- Remove `components/ThemeModal.tsx` - Replaced with dropdown
+- Update `components/ThemeDropdown.tsx` - Convert to actual dropdown menu
+- Install `pdfjs-dist` package for PDF rendering
+- Update `components/MainWorkspace.tsx` - Integrate PDF.js rendering
+- Update `components/FileThumbnailSidebar.tsx` - PDF thumbnail rendering with PDF.js
+- Update `components/ToolNavigation.tsx` - Ribbon operations below tabs with vertical scroll
+- Update `components/BottomBar.tsx` - Ensure matches Image #2 design
+
+**Implementation Order:**
+1. [ ] Convert theme modal to dropdown
+2. [ ] Implement PDF.js rendering (thumbnails + workspace)
+3. [ ] Create page navigation bar matching Image #2
+4. [ ] Refactor ribbon layout (operations below tabs)
+5. [ ] Test all UI changes
+
+---
 Build a privacy-first, comprehensive file editing platform (Smallpdf parity + enhancements) that enables users to:
-1. **Image Operations**: Convert (PNG/JPG/WebP/GIF), compress, resize (pixel/%  with toggle), crop, rotate, flip
-2. **PDF Conversion**: Bidirectional conversion PDF ↔ Word/Excel/PowerPoint/Images with formatting preservation
+1. **Image Operations**: Convert (PNG/JPG/WebP/GIF), compress, resize (pixel/%  with toggle), crop (inline, aspect ratios), rotate, flip
+2. **PDF Conversion**: Bidirectional conversion PDF → Word/Excel/PowerPoint/Images with formatting preservation
 3. **PDF Compression**: Advanced quality control (Low/Recommended/High Quality) with estimated size reduction
 4. **PDF Organization**: Merge, split, extract, rotate, delete, reorder pages with drag-drop thumbnails
-5. **PDF Editing**: Annotate (text/highlight/shapes), watermark (text/image), crop, redact, page numbers
+5. **PDF Editing**: Annotate (text/highlight/shapes), watermark (text/image), crop, redact, page numbers, e-sign, watermark, number pages, translate, document personalization
 6. **PDF Forms & Signing**: Fill/create forms, e-signatures (draw/upload/type), request signatures
 7. **PDF Security**: Unlock, protect (password/permissions), flatten, reader/viewer with search
 8. **AI Tools**: Summarize PDFs, translate (50+ languages), chat with PDF Q&A, generate quiz questions
@@ -20,7 +375,7 @@ Build a privacy-first, comprehensive file editing platform (Smallpdf parity + en
 10. **Government Templates**: Auto-format Indian docs (DL, Passport, Aadhar, PAN, OCI)
 11. **Document Replacement**: Auto-detect and replace personal/academic details with saved profiles
 12. **Batch Processing**: 5 files simultaneously (free tier), operation history, undo/redo, workflow presets
-13. **Modern UI**: Tool navigation bar, horizontal file cards, improved error handling, About/FAQ pages
+13. **Modern UI**: Ribbon navigation, grouped function columns, improved error handling, About/FAQ pages
 
 **Technical Approach**: Next.js 14 full-stack web app with React 18, TypeScript strict mode. **Client-side**: browser-image-compression, pdf-lib (annotate/watermark/forms/security), Tesseract.js (OCR), jsfeat (edge detection), signature_pad, pdf.js (viewer). **Server-side**: LibreOffice/POI (Office ↔ PDF), OpenAI/Claude API (AI features), encryption (AES-256), auto-delete (<5min). **Storage**: localStorage (profiles/presets), IndexedDB (file history/AI chats). Mobile-responsive PWA-ready design.
 

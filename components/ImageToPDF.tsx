@@ -266,7 +266,11 @@ export function ImageToPDF() {
                 <input
                   type="checkbox"
                   checked={selectedImages.includes(file.id)}
-                  onChange={() => handleToggleImage(file.id)}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleToggleImage(file.id);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
                   className="w-4 h-4 text-cyan-600 border-secondary-300 rounded focus:ring-cyan-500"
                 />
                 <div className="flex-1 min-w-0">

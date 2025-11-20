@@ -1,46 +1,82 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings } from './Settings';
+import { Moon, Sun } from 'lucide-react';
+import { useThemeStore } from '@/lib/stores/themeStore';
+
+// Import the applyThemeToDOM function (we need to export it from themeStore)
+// For now, we'll re-apply the theme by calling setTheme with current theme ID
 
 export function WorkspaceHeader() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLightMode, setIsLightMode] = useState(false);
+
+  // Initialize light mode state on mount
+  useEffect(() => {
+    const root = document.documentElement;
+    setIsLightMode(root.classList.contains('light'));
+  }, []);
+
+  const { currentTheme, setTheme } = useThemeStore();
+  
+  const toggleTheme = () => {
+    // Toggle light/dark mode
+    const root = document.documentElement;
+    
+    if (root.classList.contains('light')) {
+      root.classList.remove('light');
+      setIsLightMode(false);
+    } else {
+      root.classList.add('light');
+      setIsLightMode(true);
+    }
+    
+    // Re-apply theme to ensure light/dark variants are properly applied
+    // The CSS classes will automatically use the correct variant based on .light class
+    setTheme(currentTheme.id);
+  };
 
   return (
     <>
-      <header className="workspace-header">
-        {/* Left: Branding */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-              <span className="text-white font-bold text-lg">F</span>
+      <footer 
+        className="w-full border-t backdrop-blur-xl"
+        style={{ 
+          backgroundColor: 'var(--color-surface)', 
+          borderColor: 'rgba(var(--color-primary-rgb, 20, 184, 166), 0.3)'
+        }}
+      >
+        <div className="px-6 py-3 flex items-center justify-between gap-8">
+          {/* Left: Branding and Tagline */}
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-teal-500 flex items-center justify-center">
+                <span className="text-white font-bold text-lg">F</span>
+              </div>
+              <div className="flex flex-col">
+                <h1 className="text-lg font-bold leading-tight" style={{ color: 'var(--color-text)' }}>FlowConvert</h1>
+                <p className="text-xs" style={{ color: 'var(--color-accent)' }}>Your files never leave your computer</p>
+              </div>
             </div>
-            <h1 className="text-xl font-bold text-secondary-900">FlowConvert</h1>
           </div>
 
-          {/* Privacy Badge */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 border border-green-200">
-            <svg
-              className="w-4 h-4 text-green-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-              />
-            </svg>
-            <span className="text-xs font-medium text-green-700">
-              Your files never leave your computer
-            </span>
-          </div>
-        </div>
+          {/* Right: Actions */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Theme Toggle */}
+            <button
+            onClick={toggleTheme}
+            className="btn-secondary text-sm py-2 px-4"
+            title="Toggle light/dark mode"
+            aria-label="Toggle theme"
+          >
+            {isLightMode ? (
+              <Moon size={16} className="mr-1" />
+            ) : (
+              <Sun size={16} className="mr-1" />
+            )}
+            {isLightMode ? 'Dark' : 'Light'}
+          </button>
 
-        {/* Right: Actions */}
-        <div className="flex items-center gap-3">
           <button
             className="btn-secondary text-sm py-2 px-4"
             title="Open settings"
@@ -109,7 +145,8 @@ export function WorkspaceHeader() {
             Upload Files
           </button>
         </div>
-      </header>
+      </div>
+      </footer>
 
       {/* Settings Modal */}
       <Settings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />

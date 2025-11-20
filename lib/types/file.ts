@@ -49,6 +49,159 @@ export interface FileDimensions {
 }
 
 /**
+ * File metadata for images (EXIF data, dimensions, etc.)
+ */
+export interface FileMetadata {
+  // Dimensions (for images)
+  width?: number;
+  height?: number;
+  aspectRatio?: number;
+
+  // EXIF data (for images)
+  exif?: {
+    make?: string; // Camera manufacturer
+    model?: string; // Camera model
+    dateTime?: string; // Photo timestamp
+    orientation?: number; // Image orientation
+    gpsLatitude?: number; // GPS coordinates
+    gpsLongitude?: number;
+    flash?: string;
+    focalLength?: string;
+    iso?: number;
+    exposureTime?: string;
+    fNumber?: string;
+  };
+
+  // Color information
+  colorSpace?: string; // sRGB, AdobeRGB, etc.
+  hasAlpha?: boolean; // Transparency channel
+  bitDepth?: number; // 8, 16, 24, 32
+
+  // Document metadata (for PDFs, DOCX)
+  author?: string;
+  title?: string;
+  subject?: string;
+  keywords?: string[];
+  creationDate?: string;
+  modificationDate?: string;
+  pageCount?: number; // For PDFs
+  wordCount?: number; // For documents
+
+  // File-specific
+  dpi?: number; // Dots per inch
+  compression?: string; // Compression algorithm
+}
+
+/**
+ * Conversion options for file operations
+ */
+export interface ConversionOptions {
+  // Output format
+  outputFormat: FileFormat;
+
+  // Quality settings (0-100, where 100 is highest quality)
+  quality?: number; // Default: 90 for lossy, 100 for lossless
+
+  // Resize options
+  width?: number;
+  height?: number;
+  maintainAspectRatio?: boolean; // Default: true
+  resizeMode?: 'contain' | 'cover' | 'fill' | 'inside' | 'outside'; // Default: 'contain'
+
+  // Compression
+  compress?: boolean; // Default: false (preserve quality)
+  compressionLevel?: number; // 0-100, format-specific
+
+  // Image-specific
+  removeMetadata?: boolean; // Default: false (preserve EXIF)
+  removeLocation?: boolean; // Default: true (privacy-first)
+  stripExif?: boolean; // Remove all EXIF data
+
+  // PDF-specific
+  pdfCompression?: 'none' | 'low' | 'medium' | 'high';
+  pdfVersion?: '1.4' | '1.5' | '1.6' | '1.7' | '2.0';
+
+  // Document-specific (DOCX, etc.)
+  pageMargins?: {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+  };
+  fontSize?: number;
+  fontFamily?: string;
+
+  // Processing hints
+  clientSide?: boolean; // Force client-side processing (default: auto-detect)
+  serverSide?: boolean; // Force server-side processing
+
+  // Preview
+  generatePreview?: boolean; // Default: true
+  previewSize?: number; // Max dimension for preview thumbnail
+}
+
+/**
+ * Operation applied to a file
+ */
+export interface Operation {
+  id: string; // UUID v4
+  type: OperationType;
+  fileId: string; // Reference to File.id
+  status: OperationStatus;
+  options: ConversionOptions;
+  startedAt: Date;
+  completedAt?: Date;
+  error?: string;
+  progress?: number; // 0-100
+  resultSize?: number; // Size of result in bytes
+  processingTime?: number; // Time taken in milliseconds
+}
+
+/**
+ * Types of operations that can be performed
+ */
+export enum OperationType {
+  // Conversion
+  CONVERT = 'CONVERT',
+
+  // Image operations
+  RESIZE = 'RESIZE',
+  CROP = 'CROP',
+  ROTATE = 'ROTATE',
+  FLIP = 'FLIP',
+  COMPRESS = 'COMPRESS',
+
+  // Filters
+  GRAYSCALE = 'GRAYSCALE',
+  SEPIA = 'SEPIA',
+  BLUR = 'BLUR',
+  SHARPEN = 'SHARPEN',
+  BRIGHTNESS = 'BRIGHTNESS',
+  CONTRAST = 'CONTRAST',
+  SATURATION = 'SATURATION',
+
+  // PDF operations
+  MERGE_PDF = 'MERGE_PDF',
+  SPLIT_PDF = 'SPLIT_PDF',
+  COMPRESS_PDF = 'COMPRESS_PDF',
+
+  // Metadata
+  STRIP_METADATA = 'STRIP_METADATA',
+  REMOVE_LOCATION = 'REMOVE_LOCATION',
+}
+
+/**
+ * Operation status
+ */
+export enum OperationStatus {
+  PENDING = 'PENDING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
+}
+
+/**
  * Main File entity representing an uploaded file
  */
 export interface File {
@@ -58,8 +211,8 @@ export interface File {
   type: string; // MIME type (image/png, application/pdf, etc.)
   format: FileFormat; // Enum: PNG, JPG, PDF, DOCX, etc.
   data: Blob | ArrayBuffer; // File content (in-memory only)
-  dimensions?: FileDimensions; // For images only
-  metadata?: Record<string, unknown>; // EXIF data for images
+  dimensions?: FileDimensions; // For images only (deprecated, use metadata.width/height)
+  metadata?: FileMetadata; // EXIF data for images, document metadata
   uploadedAt: Date;
   state: FileState; // UPLOADED, PROCESSING, READY, ERROR
   operations: string[]; // Array of operation IDs (references to Operation entities)

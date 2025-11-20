@@ -16,63 +16,51 @@ export interface Theme {
 
 export const PRESET_THEMES: Theme[] = [
   {
-    id: 'turquoise',
-    name: 'Turquoise Ocean',
-    description: 'Fresh and professional turquoise theme',
+    id: 'elegant-blue',
+    name: 'Elegant Blue',
+    description: 'Professional blue theme',
     colors: {
-      primary: '#06b6d4', // cyan-500
-      secondary: '#0891b2', // cyan-600
-      accent: '#3b82f6', // blue-500
-      background: '#fafbfc',
-      surface: '#ffffff',
+      primary: '#3b82f6',
+      secondary: '#1e40af',
+      accent: '#60a5fa',
+      background: '#1e3a8a',
+      surface: '#1e3a8a',
     },
   },
   {
-    id: 'royal-blue',
-    name: 'Royal Blue',
-    description: 'Classic and elegant blue theme',
-    colors: {
-      primary: '#2563eb', // blue-600
-      secondary: '#1d4ed8', // blue-700
-      accent: '#3b82f6', // blue-500
-      background: '#f8fafc',
-      surface: '#ffffff',
-    },
-  },
-  {
-    id: 'emerald',
-    name: 'Emerald Green',
-    description: 'Calm and sophisticated green theme',
-    colors: {
-      primary: '#10b981', // emerald-500
-      secondary: '#059669', // emerald-600
-      accent: '#14b8a6', // teal-500
-      background: '#f0fdf4',
-      surface: '#ffffff',
-    },
-  },
-  {
-    id: 'purple',
+    id: 'royal-purple',
     name: 'Royal Purple',
-    description: 'Luxurious and modern purple theme',
+    description: 'Luxurious purple theme',
     colors: {
-      primary: '#8b5cf6', // violet-500
-      secondary: '#7c3aed', // violet-600
-      accent: '#a855f7', // purple-500
-      background: '#faf5ff',
-      surface: '#ffffff',
+      primary: '#a855f7',
+      secondary: '#7c3aed',
+      accent: '#d8b4fe',
+      background: '#581c87',
+      surface: '#6b21a8',
     },
   },
   {
-    id: 'dark',
-    name: 'Dark Mode',
-    description: 'Elegant dark theme for reduced eye strain',
+    id: 'professional-emerald',
+    name: 'Professional Emerald',
+    description: 'Calm and professional emerald theme',
     colors: {
-      primary: '#06b6d4', // cyan-500
-      secondary: '#0891b2', // cyan-600
-      accent: '#3b82f6', // blue-500
-      background: '#0f172a', // slate-900
-      surface: '#1e293b', // slate-800
+      primary: '#14b8a6',
+      secondary: '#0d9488',
+      accent: '#2dd4bf',
+      background: '#0d3333',
+      surface: '#0f3d3d',
+    },
+  },
+  {
+    id: 'corporate-slate',
+    name: 'Corporate Slate',
+    description: 'Professional slate theme',
+    colors: {
+      primary: '#64748b',
+      secondary: '#475569',
+      accent: '#cbd5e1',
+      background: '#1e293b',
+      surface: '#334155',
     },
   },
 ];
@@ -86,15 +74,18 @@ interface ThemeState {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
-      currentTheme: PRESET_THEMES[0]!, // Default to turquoise
+      currentTheme: PRESET_THEMES[0]!, // Default to Elegant Blue (matches CSS default)
 
-      setTheme: (themeId: string) => {
-        const theme = PRESET_THEMES.find((t) => t.id === themeId);
-        if (theme) {
-          set({ currentTheme: theme });
-          applyThemeToDOM(theme);
-        }
-      },
+  setTheme: (themeId: string) => {
+    const theme = PRESET_THEMES.find((t) => t.id === themeId);
+    if (theme) {
+      set({ currentTheme: theme });
+      // Apply theme immediately
+      if (typeof window !== 'undefined') {
+        applyThemeToDOM(theme);
+      }
+    }
+  },
 
       applyTheme: (theme: Theme) => {
         set({ currentTheme: theme });
@@ -107,22 +98,53 @@ export const useThemeStore = create<ThemeState>()(
   )
 );
 
-// Apply theme to DOM by setting CSS variables
-function applyThemeToDOM(theme: Theme) {
+// Map old theme IDs to new data-theme values
+const THEME_ID_MAP: Record<string, string> = {
+  'elegant-blue': '', // Default, no data-theme needed
+  'royal-purple': 'purple',
+  'professional-emerald': 'emerald',
+  'corporate-slate': 'slate',
+  'ocean-deep': '', // Map to default for now
+};
+
+// Apply theme to DOM by setting data-theme attribute
+export function applyThemeToDOM(theme: Theme) {
   const root = document.documentElement;
 
-  root.style.setProperty('--color-primary', theme.colors.primary);
-  root.style.setProperty('--color-secondary', theme.colors.secondary);
-  root.style.setProperty('--color-accent', theme.colors.accent);
-  root.style.setProperty('--color-background', theme.colors.background);
-  root.style.setProperty('--color-surface', theme.colors.surface);
+  // Remove all data-theme attributes first
+  PRESET_THEMES.forEach((t) => {
+    const dataTheme = THEME_ID_MAP[t.id] || '';
+    if (dataTheme) {
+      root.removeAttribute('data-theme');
+    }
+  });
 
-  // Add dark mode class if using dark theme
-  if (theme.id === 'dark') {
-    root.classList.add('dark');
+  // Set data-theme attribute (empty string means default/blue theme)
+  const dataTheme = THEME_ID_MAP[theme.id] || '';
+  if (dataTheme) {
+    root.setAttribute('data-theme', dataTheme);
   } else {
-    root.classList.remove('dark');
+    root.removeAttribute('data-theme');
   }
+
+  // Update legacy color variables for compatibility
+  // Extract RGB values from HSL for rgba() usage
+  const primaryRgb = hexToRgb(theme.colors.primary);
+  if (primaryRgb) {
+    root.style.setProperty('--color-primary-rgb', `${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}`);
+  }
+}
+
+// Helper function to convert hex to RGB
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? {
+        r: parseInt(result[1]!, 16),
+        g: parseInt(result[2]!, 16),
+        b: parseInt(result[3]!, 16),
+      }
+    : null;
 }
 
 // Initialize theme on load
@@ -138,7 +160,7 @@ if (typeof window !== 'undefined') {
       // Ignore parse errors
     }
   } else {
-    // Apply default theme
+    // Apply default theme (Elegant Blue)
     applyThemeToDOM(PRESET_THEMES[0]!);
   }
 }

@@ -1,13 +1,24 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useEditorStore } from '@/lib/stores';
 import { splitPDF, extractPages as extractPDFPages, deletePDFPages, rotatePDFPages } from '@/lib/client-processors/pdf-processor';
 import { PreviewModal } from './PreviewModal';
 
-export function PDFTools() {
+interface PDFToolsProps {
+  initialTab?: 'merge' | 'split' | 'extract' | 'organize' | 'compress';
+}
+
+export function PDFTools({ initialTab = 'merge' }: PDFToolsProps = {}) {
   const files = useEditorStore((state) => Array.from(state.files.values()).filter(f => f.format === 'PDF'));
-  const [activeTab, setActiveTab] = useState<'merge' | 'split' | 'extract' | 'organize' | 'compress'>('merge');
+  const [activeTab, setActiveTab] = useState<'merge' | 'split' | 'extract' | 'organize' | 'compress'>(initialTab);
+  
+  // Update activeTab when initialTab changes
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
 

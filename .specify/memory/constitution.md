@@ -1,31 +1,23 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version Change: Template → 1.0.0
-Change Type: MAJOR (Initial constitution creation)
-Date: 2025-11-06
+Version Change: 1.0.0 → 1.1.0
+Change Type: MINOR (New development practice guidance added)
+Date: 2025-11-11
 
-Principles Added:
-- I. Privacy & Security First (HIGHEST PRIORITY)
-- II. User Experience & Interface Excellence
-- III. Code Quality & Architecture
-- IV. Test-Driven Development
-- V. Quality Assurance & Conversion Standards
+Modified Sections:
 - VI. Development Workflow & Practices
-- VII. Scalability & Performance
-- VIII. Error Handling & Resilience
-- IX. Competitive Differentiation
-- X. Long-Term Vision & Extensibility
+  - Added "Development Server Management" subsection with rules for AI assistant behavior
+  - Establishes that dev servers must not be auto-started, only run on explicit user request
+  - Clarifies which commands are permitted (build, type-check, lint) vs restricted (dev, start)
 
-Sections Added:
-- Technology Stack Requirements
-- Performance Standards
-- Governance & Conflict Resolution
+Rationale:
+- Prevents unnecessary resource consumption from auto-started dev servers
+- Gives user full control over when development servers run
+- Reduces interference with user's local development workflow
 
 Templates Status:
-✅ plan-template.md - Constitution Check section aligns with all 10 principles
-✅ spec-template.md - Requirements sections align with privacy, UX, and quality principles
-✅ tasks-template.md - Task organization supports TDD and independent testing principles
+✅ No template changes required - this is a development practice guideline for AI assistants
 
 Follow-up Items: None
 -->
@@ -223,7 +215,14 @@ Follow-up Items: None
 - Automated rollback on deployment failure
 - Feature flags for gradual rollout of new features
 
-**Rationale**: Structured workflow and thorough documentation enable team collaboration, reduce bugs, and accelerate onboarding.
+**Development Server Management**:
+- Development servers (localhost) MUST NOT be started automatically by AI assistants
+- `npm run dev`, `npm start`, or equivalent commands MUST only be run when explicitly requested by the user
+- Build commands (`npm run build`) are permitted for verification purposes
+- Type-checking and linting commands are always permitted
+- AI assistants MUST terminate all running dev servers when requested by the user
+
+**Rationale**: Structured workflow and thorough documentation enable team collaboration, reduce bugs, and accelerate onboarding. Automatic server starts waste system resources and can interfere with user workflows.
 
 ---
 
@@ -428,4 +427,4 @@ When principles conflict, resolve in this priority order:
 - **Code review**: Human verification of principle adherence
 - **Quarterly audits**: Review for principle violations and tech debt
 
-**Version**: 1.0.0 | **Ratified**: 2025-11-06 | **Last Amended**: 2025-11-06
+**Version**: 1.1.0 | **Ratified**: 2025-11-06 | **Last Amended**: 2025-11-11

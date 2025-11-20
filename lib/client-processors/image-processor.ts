@@ -8,7 +8,6 @@
  */
 
 import imageCompression from 'browser-image-compression';
-import heic2any from 'heic2any';
 import {
   getMimeTypeFromFormat,
   FileDimensions,
@@ -298,6 +297,9 @@ export async function convertImageFormat(
 ): Promise<Blob> {
   // Handle HEIC conversion
   if (blob.type === 'image/heic' || blob.type === 'image/heif') {
+    // Dynamic import to avoid SSR issues
+    const heic2any = (await import('heic2any')).default;
+
     const convertedBlob = await heic2any({
       blob,
       toType: getMimeTypeFromFormat(params.targetFormat),
