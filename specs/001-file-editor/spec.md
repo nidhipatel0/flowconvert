@@ -20,11 +20,13 @@
 - ✅ OCR: Make scanned documents searchable with Tesseract.js
 - ✅ Document Templates: Auto-format Indian government docs (DL, Passport, Aadhar, PAN, OCI)
 - ✅ Document Replacement: Auto-detect and replace personal/academic details with saved profiles
+- ✅ **Indian Document Preparation**: Complete workflow for 14 document types (Passport, Aadhaar, PAN, DL, Visa, Scholarships, etc.) with auto-resize, compress, background removal, compliance badges, individual/ZIP download
 - ✅ Edge Detection: Auto-detect document boundaries with perspective correction
 - ✅ Batch Processing: Process 5 files simultaneously (free tier), ZIP download
 - ✅ Workflow Presets: Save and apply operation sequences ("Instagram Post", "Government Doc", etc.)
 - ✅ Modern UI: Tool navigation bar, horizontal file cards, percentage/pixel toggle, improved error handling
 - ✅ Privacy-First: Client-side processing for images and basic PDFs, encrypted server-side only when necessary
+- ✅ **Compress to Size**: Advanced 5-tier compression algorithm that hits precise file size targets (user enters "compress to 500KB") without dimension reduction in 90% of cases using format conversion, aggressive quality optimization, metadata removal, advanced encoding, and noise reduction
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -50,6 +52,27 @@ A user visits FlowConvert and sees a professional dark teal dashboard (#0d3333) 
 10. **Given** a user browses through all tabs, **When** they review available tools, **Then** ALL previously implemented functions (E-Signature, OCR, Document Replacement, Government Templates, Image-to-PDF, Batch Processing, Workflow Presets, PDF Annotation, Watermark, Form Filling, etc.) are visible and accessible in their respective tab categories with no functions hidden or forgotten
 
 ---
+
+### User Story 0.5 - Compress to Exact File Size (Priority: P0) 🎯 CRITICAL MVP
+
+A user has a 10MB image that must be exactly 500KB or less for an application upload limit. They visit FlowConvert, upload the image, click "Compress" tab → "Compress to Size" tool, enter "500 KB" in the target size input, and click "Compress". The system tries 5 progressive compression tiers: (1) converts to WebP format achieving 6.5MB, (2) applies aggressive quality optimization reaching 820KB, (3) removes metadata getting to 780KB, (4) uses advanced JPEG encoding achieving 520KB, (5) applies noise reduction hitting 485KB. The preview shows the compressed image with excellent visual quality. The result displays "Target: 500KB, Achieved: 485KB (3% under target, Saved 95.1%)". User downloads the compressed file, which meets their upload requirement without any cropping or dimension changes.
+
+**Why this priority**: This solves a critical pain point where users have strict file size requirements (job applications, government portals, email attachments) but don't want to sacrifice image dimensions or manually experiment with quality settings. The 5-tier progressive compression achieves target sizes in ~90% of cases without dimension reduction, making the feature genuinely useful rather than a "crop it smaller" cop-out.
+
+**Independent Test**: Upload 10MB PNG image → Enter "500 KB" target → Click Compress → Verify system tries all 5 tiers progressively → Verify result is ≤ 500KB → Verify dimensions unchanged → Download and confirm file size
+
+**Acceptance Scenarios**:
+
+1. **Given** a user uploads a 10MB image, **When** they enter "500 KB" and click Compress, **Then** the system tries format conversion (Tier 1) and shows progress "Tier 1: Trying WebP format conversion... 15%"
+2. **Given** Tier 1 reduces size to 6.5MB (still too large), **When** system continues, **Then** it tries aggressive quality optimization (Tier 2) with progress "Tier 2: Optimizing quality (85%)... 35%"
+3. **Given** Tier 2 reduces to 820KB (still over target), **When** system continues, **Then** it tries metadata removal (Tier 3) and advanced encoding (Tier 4) progressively
+4. **Given** Tier 4 achieves 520KB (close but over), **When** system applies Tier 5 (noise reduction), **Then** final result is 485KB, target is met
+5. **Given** compression succeeds, **When** results display, **Then** user sees "Target: 500KB, Achieved: 485KB (3% under target)" with green success indicator
+6. **Given** target is met, **When** user reviews preview, **Then** image dimensions are unchanged (e.g., original 4000×3000 → compressed 4000×3000) and visual quality remains excellent
+7. **Given** user is satisfied, **When** they click Download, **Then** compressed file downloads as "filename_compressed.webp" or appropriate format
+8. **Given** all 5 tiers fail to reach target (rare), **When** best effort is 650KB for 500KB target, **Then** system shows "Target Not Reached: Best effort 650KB (30% over target)" and offers two buttons: "Auto-Resize & Retry" and "Manual Crop"
+9. **Given** user clicks "Auto-Resize & Retry", **When** system scales image to 90% dimensions, **Then** it re-runs 5-tier compression on smaller image and achieves target
+10. **Given** user clicks "Manual Crop", **When** crop tool opens, **Then** user sees guidance "To reach 500KB, crop to approximately 85% of current area or reduce to 3400×2550 pixels"
 
 ### User Story 1 - Quick Single File Edit (Priority: P1) 🎯 MVP
 
@@ -175,6 +198,47 @@ A mobile user is browsing their photo gallery and finds a group of 5 photos they
 
 ---
 
+### User Story 8 - Indian Document Preparation (Priority: P1) 🎯 MVP
+
+An Indian citizen needs to prepare multiple documents for various government applications (passport, visa, Aadhaar, PAN card, driving license, scholarships). They visit FlowConvert, click the "Doc Prep" tab, see a searchable dropdown listing all document types with icons. They select "Passport" and see a checklist of required files: Passport Photo (600×600px, <300KB, white background), ID Proof (PDF, <1MB), Address Proof (PDF, <1MB), DOB Proof (PDF, <1MB). They drag their oversized photo (8MB, 4000×3000px) and scanned documents (2MB each) into designated upload zones. The system processes each file automatically: resizes photo to 600×600px with white background, compresses to 250KB, converts documents to optimized PDFs. They can toggle between "Auto-process" mode (instant) or "Step-by-step" mode (confirm each file). Real-time status shows ✅ compliance badges (dimensions, size, format). They can make manual adjustments if needed (crop, brightness, contrast). Finally, they download all files individually or as a single ZIP labeled "Passport_Documents_20241121.zip" - all in under 2 minutes.
+
+**Why this priority**: This solves a critical pain point for millions of Indian citizens who struggle with complex government document requirements. Each document type (passport, Aadhaar, PAN, DL, visa, scholarships) has strict specifications (dimensions, file size, DPI, background color, format). Getting these wrong leads to rejection and resubmission delays. This feature auto-formats everything correctly, making government applications stress-free.
+
+**Independent Test**: Select "Driving License" from dropdown → Upload 8MB photo + 2MB scanned documents → System auto-resizes photo to 420×525px, <20KB, white background → System converts documents to PDF <300KB → Verify all files meet DL requirements → Download as ZIP
+
+**Acceptance Scenarios**:
+
+1. **Given** a user clicks "Doc Prep" tab, **When** the page loads, **Then** a searchable dropdown shows all document types (Driving License, Aadhaar, PAN Card, Passport, Visa, MahaDBT/Scholarships, DigiLocker, Birth Certificate, Bank Passbook, Electricity Bill, Educational Certificates, Caste Certificate, Income Certificate, Employment Letter) with icons
+2. **Given** a user selects a document type (e.g., "Aadhaar"), **When** selection completes, **Then** a checklist displays all required files with specifications: Passport Photo (420×525px, 300 DPI, JPEG, 10-20KB, white bg), Signature (256×64px, JPEG <20KB), Proof of Identity (PDF/JPG, 200 DPI, <300KB), etc.
+3. **Given** a user sees the checklist, **When** they drag files into upload zones, **Then** each zone accepts appropriate file types (images for photo/signature, PDF/images for documents) with instant validation
+4. **Given** a user uploads files, **When** "Auto-process" mode is enabled, **Then** system automatically resizes, compresses, removes backgrounds, and optimizes all files to meet exact requirements without user intervention
+5. **Given** a user prefers manual control, **When** they toggle "Step-by-step confirmation" mode, **Then** system shows preview with suggested changes for each file and waits for user approval before processing
+6. **Given** a user has uploaded files, **When** processing completes, **Then** each file shows real-time status with compliance badges: ✅ 420×525px, ✅ 18KB, ✅ JPEG, ✅ White background, or ⚠️ warnings if issues detected
+7. **Given** a user wants manual adjustments, **When** they click "Adjust" on any file, **Then** a preview panel opens with controls for crop, brightness, contrast, rotate, and manual dimension input
+8. **Given** a user has processed all required files, **When** they review the summary, **Then** missing optional files are listed with "These might be needed" guidance, without blocking download
+9. **Given** a user is ready to download, **When** they choose download option, **Then** they can download files individually (one-by-one) OR as a single ZIP file labeled "DocumentType_Documents_YYYYMMDD.zip" (e.g., "Passport_Documents_20241121.zip")
+10. **Given** a user downloads as ZIP, **When** extraction completes, **Then** all files are organized with clear names: "Passport_Photo_600x600.jpg", "Passport_ID_Proof.pdf", "Passport_Address_Proof.pdf", etc.
+11. **Given** a user uploads incompatible files, **When** validation fails, **Then** clear error messages explain issues: "Photo must be JPEG or PNG format" or "Document exceeds 1MB limit - current size 1.2MB"
+12. **Given** a user needs guidance, **When** they hover over any requirement in checklist, **Then** tooltips explain why that specification is needed and provide tips for best results
+
+**Document Types Supported**:
+1. **Driving License (RTO)** - Photo 420×525px, Signature 200×80px, ID/Address Proof PDF <300KB
+2. **Aadhaar Card** - Photo 420×525px, Signature 256×64px, POI/POA/DOB PDF <300KB
+3. **PAN Card** - Photo 300×400px, Signature 200×80px, ID/Address Proof PDF <300KB
+4. **Passport** - Photo 600×600px, ID/Address/DOB Proof PDF <1MB
+5. **Visa (India)** - Photo 350×450px, Passport Copy PDF <1MB
+6. **MahaDBT/Scholarships** - Photo 420×525px, Signature 256×64px, Certificates PDF <300KB
+7. **DigiLocker** - Any document PDF/JPG <10MB
+8. **Birth Certificate** - Scan PDF/JPG <500KB
+9. **Bank Passbook/Statement** - Scan PDF/JPG <500KB-1MB
+10. **Electricity Bill** - Scan PDF/JPG <500KB
+11. **Educational Certificates** (SSC/HSC/Degree) - Scan PDF/JPG <500KB
+12. **Caste Certificate** - Scan PDF/JPG <300KB
+13. **Income Certificate** - Scan PDF/JPG <300KB
+14. **Employment Letter** - Scan PDF/JPG <500KB
+
+---
+
 ### Edge Cases
 
 - **Large files**: What happens when a user uploads a 500MB video file (beyond free tier 50MB limit)? System shows clear message: "File too large (500MB). Free tier supports up to 50MB. Try compressing first or upgrade to Premium."
@@ -213,8 +277,29 @@ A mobile user is browsing their photo gallery and finds a group of 5 photos they
 - **FR-002-A**: System MUST support PDF to Office format conversions: PDF → Word, PDF → Excel, PDF → PowerPoint with formatting preservation
 - **FR-002-B**: System MUST support Office to PDF conversions: Word → PDF, Excel → PDF, PowerPoint → PDF with layout preservation
 - **FR-002-C**: System MUST support image to document conversions: Images → PDF, Images → Word with automatic layout
-- **FR-003**: System MUST support image compression with user-controlled quality slider (1-100%) AND target file size mode (user enters "Make this 200KB" and system auto-adjusts quality to hit target)
-- **FR-003-A**: System MUST support advanced PDF compression with user-controlled quality levels (Low Quality/Small Size, Recommended Quality, High Quality/Large Size) showing estimated file size reduction before processing
+- **FR-003**: System MUST support image compression with user-controlled quality slider (1-100%) AND **Compress to Size** mode with advanced 5-tier progressive compression strategy:
+  - **Tier 1 - Format Conversion**: Try modern formats (WebP 25-35% smaller, AVIF 50% smaller) at 95% quality before reducing quality of original format
+  - **Tier 2 - Aggressive Quality Optimization**: Fine-grained binary search (12 iterations vs 7) with `alwaysKeepResolution: true` flag to preserve dimensions
+  - **Tier 3 - Metadata Removal & Optimization**: Strip EXIF/IPTC data (10-50KB savings), double-pass compression, progressive encoding
+  - **Tier 4 - Advanced Encoding**: Chroma subsampling, progressive JPEG encoding, multiple quality passes (85%, 75%, 65%, 55%... down to 15%)
+  - **Tier 5 - Noise Reduction**: Slight blur filter (0.5px) to reduce file size by additional 5-15% as last resort before dimension reduction
+  - System MUST try all 5 tiers progressively with real-time progress callbacks (0-100%) showing current tier and method
+  - System MUST achieve target size without dimension reduction in ~90% of typical cases
+  - System MUST accept ±5% tolerance by default (configurable), showing exact achieved size vs target (e.g., "Target: 500KB, Achieved: 485KB (3% under target)")
+  - **Future (Phase 2)**: Shift to strict 0% tolerance (exact target matching)
+  - If all 5 tiers fail to meet target, system MUST offer two options: (a) Auto-Resize & Retry (scale down 10% and re-run all tiers), (b) Manual Crop (open crop tool with dimension guidance)
+- **FR-003-A**: System MUST support advanced PDF compression with 3-tier hybrid strategy:
+  - **Tier 1 (Client-side)**: Always try pdf-lib client-side compression first (10-30% reduction, 100% private) for PDFs <5MB or <20 pages
+  - **Tier 2 (Server-side Smart Compression)**: Auto-detect PDF type (native/scanned/hybrid) and route to appropriate pipeline:
+    - Native/Text PDFs: qpdf + Ghostscript structure optimization (20-40% reduction, preserves text/vectors)
+    - Scanned PDFs: mutool image extraction + Sharp re-encoding + pdf-lib rebuild (40-70% reduction)
+    - Hybrid PDFs: Smart per-page routing to appropriate pipeline (30-60% reduction)
+  - **Tier 3 (User-Controlled Quality)**: Quality presets with clear trade-offs:
+    - High Quality (minimal compression, 10-25% reduction)
+    - Balanced (recommended, 30-50% reduction)
+    - Maximum Compression (aggressive, 50-80% reduction)
+- **FR-003-B**: System MUST show consent modal before any server-side compression with clear privacy information: AES-256 encryption, auto-delete within 5 minutes, no file logging
+- **FR-003-C**: System MUST display privacy indicators throughout app: Shield icon 🛡️ for client-side processing, Cloud icon ☁️ with explanation for server-side processing
 - **FR-004**: System MUST support image resizing with preset dimensions (Instagram, Facebook, Twitter, LinkedIn, YouTube, Custom), percentage-based resizing (25%, 50%, 75%, 125%, 150%, 200%, custom %), and pixel-based resizing
 - **FR-004-A**: System MUST provide toggle control to switch between percentage-based and pixel-based dimension input modes (beside Image Settings heading)
 - **FR-004-B**: System MUST fix input field behavior: when all digits deleted, field shows empty (not "0"), and new input replaces empty value (not appending to "0" creating "0876")
@@ -365,11 +450,47 @@ A mobile user is browsing their photo gallery and finds a group of 5 photos they
 - **FR-100**: System MUST provide About page with product vision, privacy commitment, feature overview, roadmap
 - **FR-101**: System MUST provide FAQ page with common questions (file limits, privacy, supported formats, pricing, troubleshooting)
 
+#### Indian Document Preparation (Doc Prep)
+
+- **FR-102**: System MUST provide "Doc Prep" tab in main navigation for Indian government document preparation
+- **FR-103**: System MUST provide searchable dropdown listing all Indian document types with icons: Driving License, Aadhaar, PAN Card, Passport, Visa, MahaDBT/Scholarships, DigiLocker, Birth Certificate, Bank Passbook/Statement, Electricity Bill, Educational Certificates (SSC/HSC/Degree), Caste Certificate, Income Certificate, Employment Letter
+- **FR-104**: System MUST display requirements checklist for selected document type showing all required files with exact specifications (dimensions, file size, format, DPI, background color)
+- **FR-105**: System MUST provide dedicated upload zones for each required file type (photo, signature, documents) with drag-drop support
+- **FR-106**: System MUST validate uploaded files against requirements (format, size) with instant feedback before processing
+- **FR-107**: System MUST provide two processing modes: "Auto-process" (instant automatic processing) and "Step-by-step confirmation" (user approves each file)
+- **FR-108**: System MUST automatically process photos to exact specifications: resize to required dimensions, compress to target file size, remove/replace background (white for passport photos), set correct DPI
+- **FR-109**: System MUST automatically process signatures: clean background, crop tightly, resize to required dimensions, compress to target size, convert to black-on-white
+- **FR-110**: System MUST automatically process document scans: convert to PDF if needed, optimize quality, compress to target size, set correct DPI, deskew if applicable
+- **FR-111**: System MUST show real-time processing status with compliance badges for each file: ✅ dimensions correct, ✅ size within limit, ✅ correct format, ✅ background acceptable, or ⚠️ warnings
+- **FR-112**: System MUST provide manual adjustment panel for each processed file with controls: crop, brightness, contrast, rotate, manual dimension input, quality slider
+- **FR-113**: System MUST display missing optional files as suggestions ("These might be needed") without blocking download
+- **FR-114**: System MUST allow downloading processed files individually (one-by-one with separate buttons) OR as single ZIP archive
+- **FR-115**: System MUST name ZIP files descriptively with document type and date: "DocumentType_Documents_YYYYMMDD.zip" (e.g., "Passport_Documents_20241121.zip")
+- **FR-116**: System MUST organize files within ZIP with clear naming: "DocumentType_FileType_Specs.ext" (e.g., "Passport_Photo_600x600.jpg", "Passport_ID_Proof.pdf")
+- **FR-117**: System MUST provide tooltips explaining each requirement specification on hover (why 600×600px, why white background, why <300KB, etc.)
+- **FR-118**: System MUST support all 14 document types with exact specifications per government requirements (as of 2024-2025):
+  - Driving License: Photo 420×525px JPEG 10-20KB white bg, Signature 200×80px JPEG <20KB, ID/Address Proof PDF/JPG <300KB 200 DPI
+  - Aadhaar: Photo 420×525px JPEG 10-20KB white bg, Signature 256×64px JPEG <20KB, POI/POA/DOB PDF/JPG <300KB 200 DPI
+  - PAN Card: Photo 300×400px JPEG 10-20KB white bg, Signature 200×80px JPEG <20KB, ID/Address Proof PDF/JPG <300KB 200 DPI
+  - Passport: Photo 600×600px JPEG/PNG 10-300KB white bg, ID/Address/DOB Proof PDF/JPG <1MB 300 DPI
+  - Visa: Photo 350×450px JPEG/PNG 10-300KB white bg, Passport Copy PDF/JPG <1MB
+  - MahaDBT/Scholarships: Photo 420×525px JPEG 10-20KB white bg, Signature 256×64px JPEG <20KB, Income/Caste/Educational Certificates PDF/JPG <300KB
+  - DigiLocker: Any document PDF/JPG/PNG/BMP/GIF <10MB 300-600 DPI
+  - Birth Certificate: Scan PDF/JPG <500KB 200-300 DPI
+  - Bank Passbook/Statement: Passbook page PDF/JPG <500KB, Statement PDF <1MB 200-300 DPI
+  - Electricity Bill: Scan PDF/JPG <500KB 200-300 DPI
+  - Educational Certificates (SSC/HSC/Degree): Scan PDF/JPG <500KB 200-300 DPI
+  - Caste Certificate: Scan PDF/JPG <300KB 200-300 DPI
+  - Income Certificate: Scan PDF/JPG <300KB 200-300 DPI
+  - Employment Letter: Scan PDF/JPG <500KB 200-300 DPI
+- **FR-119**: System MUST process all files client-side using browser APIs (Canvas, File API) for privacy - NO server uploads required
+- **FR-120**: System MUST complete processing for typical document set (<5 files, <50MB total) in under 30 seconds
+
 ### Privacy & Security Requirements (FlowConvert Specific)
 
-- **PS-001**: Processing MUST be client-side for all image operations (resize, crop, rotate, compress, format conversion between PNG/JPG/WebP/GIF/BMP)
-- **PS-002**: Processing MUST be client-side for basic PDF operations (merge, split, extract pages)
-- **PS-003**: Server-side processing permitted ONLY for: DOCX↔PDF/XLSX/PPTX conversion, DOCX/PPT text detection/replacement (Phase 1), TIFF/SVG processing, government document template validation, AI features (summarize, translate, chat, questions)
+- **PS-001**: Processing MUST be client-side for all image operations (resize, crop, rotate, compress, format conversion between PNG/JPG/WebP/GIF/BMP) using browser-image-compression and Canvas API
+- **PS-002**: Processing MUST be client-side for basic PDF operations (merge, split, extract pages) and client-side compression attempts (pdf-lib optimization for PDFs <5MB or <20 pages)
+- **PS-003**: Server-side processing permitted ONLY for: Advanced PDF compression (PDFs >5MB or >20 pages, or when client-side fails to meet target), DOCX↔PDF/XLSX/PPTX conversion, DOCX/PPT text detection/replacement (Phase 1), TIFF/SVG processing, government document template validation, AI features (summarize, translate, chat, questions)
 - **PS-004**: If server-side processing required, files MUST be encrypted (AES-256) and deleted within 5 minutes of completion
 - **PS-005**: Privacy indicator MUST show users whether processing is client-side (shield icon) or server-side (cloud icon with explanation) before operation starts
 - **PS-006**: NO logging of file contents, filenames, or metadata
@@ -382,6 +503,7 @@ A mobile user is browsing their photo gallery and finds a group of 5 photos they
 - **PS-013**: AI features (summarize, translate, chat, questions) require server-side LLM processing - files encrypted in transit and deleted after processing, conversation history stored locally only
 - **PS-014**: E-signature data (signature images, metadata) MUST be stored locally in browser only, signatures embedded in PDF before download
 - **PS-015**: Shareable PDF links (FR-082) MUST have user-controlled expiration, optional password protection, and anonymous view tracking (no user identification)
+- **PS-016**: Indian Document Preparation (Doc Prep) MUST process all files client-side using browser APIs - NO server uploads, NO external services, complete privacy
 
 ### User Experience Requirements (FlowConvert Specific)
 
@@ -461,6 +583,11 @@ A mobile user is browsing their photo gallery and finds a group of 5 photos they
 - **SC-025**: Multi-operation queue reduces workflow time by 40% compared to one-by-one operations (parallel processing + single preview)
 - **SC-026**: Recent files feature increases repeat editing rate from 60% to 75% within 7 days (faster access = more usage)
 - **SC-027**: Format auto-detection suggestions are accepted by 70%+ of users, indicating accurate recommendations
+- **SC-028**: Compress to Size feature achieves target file size (within ±5% tolerance) in 85%+ of attempts without dimension reduction
+- **SC-029**: 5-tier progressive compression completes in <10 seconds for typical 10MB images (measured on modern hardware)
+- **SC-030**: Users find Compress to Size "very useful" or "extremely useful" in 80%+ of post-feature surveys (solves strict size limit pain point)
+- **SC-031**: When target cannot be met, Auto-Resize option successfully achieves target in 95%+ of remaining cases
+- **SC-032**: Compressed images maintain "acceptable" or better visual quality rating in 90%+ of user assessments (even at minimum quality settings)
 
 ## Out of Scope (Phase 1)
 

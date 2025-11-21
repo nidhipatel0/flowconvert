@@ -682,18 +682,190 @@ No violations detected. All constitutional requirements satisfied:
 
 ### Phase 3: Image Operations & Client-Side Processing (Week 2: Days 3-5)
 
-**Objective**: Implement all image tools (US1 from original spec + FR-001, FR-003, FR-004-006)
+**Objective**: Implement all image tools (US0.5, US1 from spec + FR-001, FR-003, FR-004-006)
 
 **Key Tasks**:
 1. **Image Conversion**: PNG ↔ JPG ↔ WebP ↔ GIF ↔ BMP using Canvas API
-2. **Image Compression**: Quality slider (1-100%) + target file size mode (user enters "200KB")
-3. **Image Resizing**: Preset dimensions (social media), percentage-based, pixel-based with toggle
-4. **Image Cropping**: Freeform, aspect ratio locked, preset ratios (1:1, 4:3, 16:9)
-5. **Image Rotation/Flip**: 90°/180°/270° rotation, horizontal/vertical flip
-6. **Preview Panel**: Side-by-side before/after comparison with real-time updates
-7. **Download**: Suggested filenames (photo_resized_1080x1920.jpg)
+2. **Compress to Size - 5-Tier Progressive Compression** (US0.5 - PRIORITY):
+   - **Tier 1**: Format Conversion to WebP/AVIF (25-50% savings, quality preserved)
+   - **Tier 2**: Aggressive Quality Search (12 iterations, fine-grained 0.01 steps, `alwaysKeepResolution: true`)
+   - **Tier 3**: Metadata Removal + Double-pass Optimization (EXIF/IPTC strip, progressive encoding)
+   - **Tier 4**: Advanced JPEG Encoding (chroma subsampling, multiple quality passes 85%→15%)
+   - **Tier 5**: Noise Reduction (0.5px blur filter as last resort)
+   - Unified tool for images AND PDFs (auto-detect file type)
+   - Real-time progress callbacks (tier number, method, 0-100%)
+   - Target tolerance: ±5% (Phase 1), strict 0% (Phase 2)
+   - If all tiers fail: Offer Auto-Resize (scale 90%/80%/70% + retry) or Manual Crop (with guidance)
+   - **File**: `lib/client-processors/advanced-image-compression.ts` ✅ IMPLEMENTED
+   - **UI**: `components/compression/CompressToSizeSidebar.tsx` ✅ IMPLEMENTED
+3. **Image Compression (Legacy)**: Quality slider (1-100%) for manual control
+4. **Image Resizing**: Preset dimensions (social media), percentage-based, pixel-based with toggle
+5. **Image Cropping**: Freeform, aspect ratio locked, preset ratios (1:1, 4:3, 16:9)
+6. **Image Rotation/Flip**: 90°/180°/270° rotation, horizontal/vertical flip
+7. **Preview Panel**: Side-by-side before/after comparison with real-time updates
+8. **Download**: Suggested filenames (photo_resized_1080x1920.jpg, photo_compressed.webp)
 
-**Deliverables**: Full image editing suite, <3s processing for 10MB images, E2E test for US1
+**Deliverables**: Full image editing suite including advanced Compress to Size, <10s for 10MB images (Tier 1-5), E2E test for US0.5 and US1
+
+---
+
+### Phase 3.5: Compression Implementation - 3-Tier Hybrid Strategy (Week 2: Day 6-7)
+
+**Objective**: Implement complete compression architecture (FR-003, FR-003-A) with client-side first, intelligent server fallback
+
+**Reference**: See `specs/001-file-editor/compression-architecture.md` for full details
+
+#### Phase 3.5.1: Tier 1 - Client-Side Compression (Privacy-First)
+
+**Key Tasks - Images**:
+1. **Binary Search Algorithm**: Implement quality binary search in `lib/client-processors/image-compression.ts`
+   - Start at quality 95%, binary search down to 10%
+   - Check if result.size <= targetSize after each iteration
+   - Max 7 iterations for optimal balance
+2. **Dimension Scaling Fallback**: If min quality reached and still > target, scale dimensions (90% → 80% → 70%)
+3. **Target Size Mode**: User enters "Make this 200KB", system auto-adjusts quality to hit target
+4. **Real-time Size Estimation**: Show estimated output size as user adjusts quality slider
+
+**Key Tasks - PDFs (Client-Side Limited)**:
+5. **pdf-lib Optimization**: Implement in `lib/client-processors/pdf-compression.ts`
+   - Remove duplicate objects
+   - Compress streams (deflate)
+   - Remove unused resources
+   - Optimize embedded images (re-encode at lower quality)
+6. **Metadata Removal**: Optional user-controlled removal of title/author/creator/metadata
+7. **Client-Side Threshold Check**: Auto-detect when PDF >5MB or >20 pages → suggest server processing
+
+**Deliverables**:
+- Image compression with <3s for 10MB files, 30-50% reduction
+- PDF client compression with 10-30% reduction for small PDFs
+- Real-time preview and size estimation
+
+---
+
+#### Phase 3.5.2: Tier 2 - Server-Side Smart Compression (Consent-Required)
+
+**Key Tasks - Infrastructure**:
+1. **Consent Modal Component**: Create `components/compression/ConsentModal.tsx`
+   - Show before any server upload
+   - Clear privacy information: AES-256 encryption, auto-delete <5min, no logging
+   - Privacy policy link, Cancel/Continue buttons
+2. **Privacy Indicators**: Add shield 🛡️ (client) and cloud ☁️ (server) icons throughout app
+3. **Encryption Utility**: Implement AES-256 in `lib/utils/encryption.ts` using crypto-js
+4. **Auto-Delete Scheduler**: Implement in `lib/server-processors/auto-delete.ts` with <5min TTL
+
+**Key Tasks - PDF Type Detection**:
+5. **Install Server Tools**: Set up Ghostscript, qpdf, mutool, Sharp via Vercel binary layers or Docker (local dev)
+6. **PDF Type Detector**: Implement in `lib/server-processors/pdf-type-detection.ts`
+   - Use `qpdf --check` to analyze structure
+   - Use `pdfinfo` to count pages
+   - Use `pdftotext` to measure text density
+   - Return: 'native' (>100 chars/page), 'scanned' (<10 chars/page), 'hybrid' (10-100 chars/page)
+
+**Key Tasks - Pipeline A: Native/Text PDFs**:
+7. **Native Compression Processor**: Implement in `lib/server-processors/pdf-native-compression.ts`
+   - Step 1: qpdf linearize + compress streams
+   - Step 2: Ghostscript optimization with -dPDFSETTINGS=/ebook (balanced)
+   - Step 3: pdfcpu metadata cleanup (optional)
+   - Expected: 20-40% reduction, preserves text/vectors
+8. **Quality Presets for Ghostscript**:
+   - High Quality: `/printer` (300 DPI)
+   - Balanced: `/ebook` (150 DPI, recommended)
+   - Maximum: `/screen` (72 DPI)
+
+**Key Tasks - Pipeline B: Scanned PDFs**:
+9. **Scanned Compression Processor**: Implement in `lib/server-processors/pdf-scanned-compression.ts`
+   - Step 1: mutool extract embedded images
+   - Step 2: Sharp re-encode images (JPEG quality 75, mozjpeg enabled)
+   - Step 3: pdf-lib rebuild PDF with compressed images
+   - Expected: 40-70% reduction
+10. **Image Quality Control**: Quality slider affects Sharp JPEG quality (60-90)
+
+**Key Tasks - Pipeline C: Hybrid PDFs**:
+11. **Hybrid Compression Processor**: Implement in `lib/server-processors/pdf-hybrid-compression.ts`
+    - Detect page types (text vs image per page)
+    - Route text pages to Pipeline A
+    - Route image pages to Pipeline B
+    - Merge results in original page order
+    - Expected: 30-60% reduction
+
+**Key Tasks - API Routes**:
+12. **Image Compression API**: Create `app/api/compress/image/route.ts` (fallback for large images)
+13. **PDF Compression API**: Create `app/api/compress/pdf/route.ts`
+    - Receive encrypted file upload
+    - Detect PDF type (native/scanned/hybrid)
+    - Route to appropriate pipeline
+    - Return compressed result
+    - Auto-delete temp files
+14. **Temp File Management**: Implement in `lib/utils/temp-file-manager.ts` with auto-cleanup
+
+**Deliverables**:
+- Complete server-side compression with smart routing
+- All 3 pipelines (Native, Scanned, Hybrid) functional
+- Consent modal and privacy indicators
+- AES-256 encryption and auto-delete <5min
+- <30s processing for 50MB PDFs
+
+---
+
+#### Phase 3.5.3: Tier 3 - User-Controlled Quality Presets
+
+**Key Tasks - UI Components**:
+1. **Quality Selector Component**: Create `components/compression/QualitySelector.tsx`
+   - Radio buttons or segmented control
+   - Options: High Quality (10-25% reduction), Balanced (30-50%), Maximum (50-80%)
+   - Show estimated file size for each preset
+   - Explain trade-offs (quality vs size) with tooltips
+2. **Compression Progress Component**: Create `components/compression/CompressionProgress.tsx`
+   - Show current step (Analyzing → Compressing → Finalizing)
+   - Progress bar with percentage
+   - Estimated time remaining
+   - Cancel button for server jobs
+
+**Key Tasks - Integration**:
+3. **Compression Store**: Create `lib/stores/compression-store.ts` (Zustand)
+   - Track: quality preset, target size, processing status, server consent given
+   - Actions: setQualityPreset, setTargetSize, startCompression, cancelCompression
+4. **Wire Up UI**: Integrate all compression components with editor workflow
+5. **Add to Tool Navigation**: Add "Compress" tool to ribbon with proper routing
+
+**Deliverables**:
+- Complete compression UI with quality presets
+- User-friendly compression workflow
+- Real-time progress tracking
+- All 3 tiers working together seamlessly
+
+---
+
+#### Phase 3.5.4: Testing & Validation
+
+**Key Tasks - Unit Tests**:
+1. `tests/unit/lib/image-compression.test.ts`: Binary search algorithm, dimension scaling
+2. `tests/unit/lib/pdf-compression.test.ts`: pdf-lib optimization
+3. `tests/unit/lib/pdf-type-detection.test.ts`: Detect native/scanned/hybrid correctly
+4. `tests/unit/lib/pdf-native-compression.test.ts`: Ghostscript pipeline
+5. `tests/unit/lib/pdf-scanned-compression.test.ts`: Image extraction + Sharp
+6. `tests/unit/lib/encryption.test.ts`: AES-256 encrypt/decrypt
+
+**Key Tasks - Integration Tests**:
+7. `tests/integration/image-compression.test.ts`: 5MB JPG → target 500KB → verify <500KB
+8. `tests/integration/pdf-native-compression.test.ts`: 10MB text PDF → 30% reduction, text selectable
+9. `tests/integration/pdf-scanned-compression.test.ts`: 20MB scanned doc → 60% reduction, readable
+10. `tests/integration/pdf-hybrid-compression.test.ts`: 15MB mixed → verify smart routing
+
+**Key Tasks - E2E Tests**:
+11. `tests/e2e/compression-client-side.spec.ts`: Upload image → compress client-side → download
+12. `tests/e2e/compression-server-fallback.spec.ts`: Large PDF → consent modal → compress → download
+13. `tests/e2e/compression-quality-presets.spec.ts`: Test all 3 presets produce different sizes
+
+**Success Criteria**:
+- ✅ 80% test coverage for compression module
+- ✅ All 3 tiers functional (client, server smart, quality control)
+- ✅ Client-side: <3s for 10MB images, 30-50% reduction
+- ✅ Server-side: <30s for 50MB PDFs, 40-70% reduction for scanned, 20-40% for native
+- ✅ Privacy: Consent modal shown, encryption verified, auto-delete confirmed
+- ✅ No regressions in existing image/PDF features
+
+**Deliverables**: Production-ready compression system with full test coverage
 
 ---
 
@@ -748,7 +920,26 @@ No violations detected. All constitutional requirements satisfied:
 
 ---
 
-### Phase 5: Government Templates (Week 4: Days 1-2)
+### Phase 5: Indian Document Preparation (Doc Prep) - PRIORITY ⭐ (Week 4: Days 1-3)
+
+**Objective**: Complete workflow for preparing Indian government documents with automated processing (FR-102 to FR-120, US8)
+
+**Key Tasks**:
+1. **Document Requirements Configuration**: Create comprehensive config for 14 document types (Driving License, Aadhaar, PAN, Passport, Visa, Scholarships, DigiLocker, Birth Certificate, Bank Passbook, Electricity Bill, Educational Certificates, Caste Certificate, Income Certificate, Employment Letter)
+2. **Client-Side Processing**: Implement image processing utilities (resize, compress, background removal, DPI adjustment) using Canvas API and browser-image-compression
+3. **UI Components**: Build document type selector (searchable dropdown), requirements checklist, upload zones, compliance badges, manual adjustment panel
+4. **Workflow Modes**: Implement "Auto-process" (instant) and "Step-by-step confirmation" modes with real-time preview
+5. **Download Options**: Support individual file download AND batch ZIP download with organized naming
+6. **Navigation Integration**: Add "Doc Prep" tab to main navigation
+
+**Deliverables**:
+- Complete Doc Prep workflow for all 14 document types
+- Client-side processing with NO server uploads (100% private)
+- Real-time compliance validation with ✅/⚠️ badges
+- Individual and ZIP download options
+- Tooltips explaining each requirement
+
+### Phase 5B: Government Templates (Week 4: Days 4-5)
 
 **Objective**: Auto-format government documents (FR-009 to FR-011)
 
@@ -835,17 +1026,303 @@ No violations detected. All constitutional requirements satisfied:
 
 ---
 
+## Future Scaling Architecture (Post-Launch)
+
+### Phase 10 (FUTURE): Compression Scale - Serverless Migration (6-12 months, 10K-100K users)
+
+**Triggers for Migration**:
+- Server compression jobs consistently hit 60s Vercel timeout (>5% failure rate)
+- Vercel costs exceed $200/month
+- Need longer processing times for large files (15min vs 60s)
+- User complaints about failed large PDF compression
+
+**Architecture**: Migrate from simple API routes to AWS Lambda + S3
+
+**Changes**:
+1. **Lambda Functions**: Move compression logic to separate Lambda functions (15min timeout vs 60s Vercel)
+2. **S3 Temp Storage**: Replace `/tmp` filesystem with S3 presigned uploads/downloads
+3. **API Layer**: Next.js API routes become thin routing layer (auth, validation, job creation)
+4. **Optional Redis**: Add Redis for job status tracking and progress updates
+5. **Monitoring**: CloudWatch metrics, distributed tracing with X-Ray
+
+**Stack**:
+- **API**: Next.js API routes (routing only)
+- **Workers**: AWS Lambda (Python or Node.js) with 15min timeout
+- **Storage**: S3 with lifecycle policy (auto-delete 5min)
+- **Queue**: Optional AWS SQS for job management
+- **Monitoring**: CloudWatch + Sentry
+
+**File Structure Changes**:
+```
+lib/aws/
+├── lambda-handlers/
+│   ├── pdf-native-handler.py      # Lambda for Pipeline A
+│   ├── pdf-scanned-handler.py     # Lambda for Pipeline B
+│   └── pdf-hybrid-handler.py      # Lambda for Pipeline C
+├── s3-manager.ts                   # Presigned URL generation
+└── sqs-client.ts                   # Optional queue management
+
+infrastructure/
+├── lambda/
+│   ├── Dockerfile-ghostscript     # Lambda container image
+│   └── layers/
+│       ├── ghostscript-layer.zip  # Binary layer
+│       ├── qpdf-layer.zip
+│       └── mutool-layer.zip
+└── terraform/                      # Infrastructure as Code
+    ├── main.tf                     # S3, Lambda, CloudWatch
+    └── variables.tf
+```
+
+**Migration Path**:
+1. Set up S3 bucket with 5min TTL lifecycle policy
+2. Create Lambda functions with binary layers (Ghostscript, qpdf, mutool)
+3. Update API routes to generate presigned S3 URLs instead of handling uploads
+4. Test with subset of traffic (10% → 50% → 100%)
+5. Monitor Lambda cold starts, add provisioned concurrency if needed
+6. Retire old `/tmp` filesystem approach once Lambda migration stable
+
+**Cost Estimate** (100K users, 20% server jobs = 20K PDF compressions/month):
+- Lambda: $50/month (20K invocations × avg 10s × $0.0000166667/GB-sec)
+- S3: $10/month (ephemeral storage with 5min TTL)
+- CloudWatch: $5/month (logs, metrics)
+- **Total**: ~$65/month (vs $200+ on Vercel at scale)
+
+**Deliverables**: Serverless compression architecture with 15min timeout, auto-scaling, and lower costs
+
+---
+
+### Phase 11 (FUTURE): Compression Enterprise - Docker Workers + BullMQ (12-24 months, 100K+ users)
+
+**Triggers for Migration**:
+- Serverless costs exceed $500/month
+- Need advanced features (priority queues, batch processing 100+ PDFs, custom workflows)
+- Want fine-grained cost control and optimization
+- Enterprise customers need on-premise deployment
+
+**Architecture**: Full worker fleet from `compression-architecture.md` Phase 3
+
+**Stack**:
+```
+Next.js API → Redis + BullMQ Queue → Docker Workers
+                                      ├── worker-ghostscript (4 instances, auto-scale to 20)
+                                      ├── worker-qpdf (2 instances, auto-scale to 8)
+                                      ├── worker-mutool (2 instances, auto-scale to 8)
+                                      └── worker-sharp (4 instances, auto-scale to 16)
+                                           ↓
+                                    S3/MinIO (temp storage, 5min TTL)
+                                           ↓
+                                    Presigned URL → Client download
+```
+
+**Infrastructure**:
+- **API**: Next.js on Vercel (stateless, routing only)
+- **Queue**: Redis (Upstash managed or self-hosted on VPS)
+- **Workers**: Docker Compose (local dev) → Kubernetes (production)
+- **Storage**: S3 (AWS) or MinIO (self-hosted for cost savings)
+- **Monitoring**: Prometheus + Grafana, BullMQ dashboard, Sentry
+
+**Advanced Features**:
+1. **Job Prioritization**: Free tier (low priority) vs Premium tier (high priority) queues
+2. **Auto-Scaling**: Scale workers based on queue length (>100 jobs = +2 workers)
+3. **Retry Logic**: Exponential backoff for failed jobs (retry 3 times, then dead-letter queue)
+4. **Batch Processing**: Single API call compresses 100 PDFs, delivers ZIP archive
+5. **Custom Workflows**: User-defined compression pipelines (e.g., "Extract pages 1-10 → Compress → Merge with another PDF")
+6. **On-Premise**: Enterprise customers can deploy full stack on their infrastructure
+
+**Worker Images** (Dockerfile examples):
+
+```dockerfile
+# worker-ghostscript/Dockerfile
+FROM ubuntu:24.04
+RUN apt-get update && apt-get install -y ghostscript qpdf curl ca-certificates nodejs
+WORKDIR /app
+COPY worker.js /app/worker.js
+CMD ["node", "/app/worker.js"]
+```
+
+```dockerfile
+# worker-sharp/Dockerfile
+FROM node:20-bullseye
+RUN apt-get update && apt-get install -y libvips-tools libjpeg-turbo-progs pngquant mozjpeg
+WORKDIR /app
+COPY worker.js ./
+CMD ["node", "worker.js"]
+```
+
+**BullMQ Queue Configuration**:
+```typescript
+// lib/queue/compression-queue.ts
+import { Queue, Worker } from 'bullmq';
+import Redis from 'ioredis';
+
+const connection = new Redis(process.env.REDIS_URL);
+
+export const compressionQueue = new Queue('compression', {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 2000 },
+    removeOnComplete: 100, // Keep last 100 completed jobs
+    removeOnFail: 1000,    // Keep last 1000 failed jobs for debugging
+  },
+});
+
+// Priority levels
+export enum JobPriority {
+  PREMIUM = 1,  // Process first
+  FREE = 10,    // Process after premium
+}
+
+// Add job to queue
+export async function addCompressionJob(data: {
+  fileKey: string;
+  pdfType: 'native' | 'scanned' | 'hybrid';
+  quality: 'high' | 'balanced' | 'max';
+  userTier: 'free' | 'premium';
+}) {
+  return compressionQueue.add('compress-pdf', data, {
+    priority: data.userTier === 'premium' ? JobPriority.PREMIUM : JobPriority.FREE,
+  });
+}
+```
+
+**Worker Implementation**:
+```typescript
+// worker-ghostscript/worker.js
+import { Worker } from 'bullmq';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import fs from 'fs/promises';
+
+const execAsync = promisify(execFile);
+
+const worker = new Worker('compression', async (job) => {
+  const { fileKey, quality } = job.data;
+
+  // Download from S3
+  const inputPath = `/tmp/${fileKey}-input.pdf`;
+  const outputPath = `/tmp/${fileKey}-output.pdf`;
+  await downloadFromS3(fileKey, inputPath);
+
+  // Compress with Ghostscript
+  const settings = quality === 'high' ? '/printer' : quality === 'max' ? '/screen' : '/ebook';
+  await execAsync('gs', [
+    '-sDEVICE=pdfwrite',
+    `-dPDFSETTINGS=${settings}`,
+    '-dNOPAUSE', '-dQUIET', '-dBATCH',
+    `-sOutputFile=${outputPath}`,
+    inputPath
+  ]);
+
+  // Upload to S3
+  const outputKey = `${fileKey}-compressed.pdf`;
+  await uploadToS3(outputPath, outputKey);
+
+  // Cleanup
+  await fs.unlink(inputPath);
+  await fs.unlink(outputPath);
+
+  return { outputKey, size: (await fs.stat(outputPath)).size };
+}, {
+  connection: new Redis(process.env.REDIS_URL),
+  concurrency: 5, // Process 5 jobs concurrently per worker
+});
+
+worker.on('completed', (job) => {
+  console.log(`Job ${job.id} completed in ${Date.now() - job.timestamp}ms`);
+});
+
+worker.on('failed', (job, err) => {
+  console.error(`Job ${job.id} failed:`, err);
+});
+```
+
+**Kubernetes Deployment** (auto-scaling):
+```yaml
+# k8s/worker-ghostscript-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-ghostscript
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: worker-ghostscript
+  template:
+    metadata:
+      labels:
+        app: worker-ghostscript
+    spec:
+      containers:
+      - name: worker
+        image: flowconvert/worker-ghostscript:latest
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: url
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: worker-ghostscript-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: worker-ghostscript
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+```
+
+**Cost Estimate** (500K users, 100K PDF compressions/month):
+- VPS (8 CPU, 32GB RAM, Hetzner): $100/month (or K8s cluster $200/month)
+- Redis (Upstash Pro): $15/month
+- S3 (or MinIO self-hosted): $30/month
+- **Total**: ~$145/month (vs $1000+ on managed services at this scale)
+
+**Migration Path from Phase 10 (Serverless)**:
+1. Set up Redis + BullMQ locally (Docker Compose)
+2. Create one worker type (Ghostscript) and migrate 10% of traffic
+3. Monitor queue length, job completion times, worker CPU/memory
+4. Add remaining worker types (qpdf, mutool, sharp) incrementally
+5. Deploy to Kubernetes with auto-scaling enabled
+6. Gradually shift traffic from Lambda to workers (50% → 80% → 100%)
+7. Keep Lambda as fallback for 1 month, then retire
+
+**Deliverables**: Enterprise-grade compression infrastructure with advanced features, auto-scaling, and lowest cost per compression
+
+---
+
 ## Implementation Timeline Summary
 
 **Total Duration**: 6 weeks (~30 business days)
 
 **NEW PRIORITY-BASED BREAKDOWN**:
 
-**WEEKS 1-2: Core Setup & Features (Phases 0-3)**
+**WEEKS 1-2: Core Setup & Features (Phases 0-3.5)**
 - Phase 0: Project Setup & Configuration (Days 1-3)
 - Phase 1: Foundational Infrastructure (Days 4-7)
 - Phase 2: Modern UI & File Upload (Week 2, Days 1-2)
 - Phase 3: Image Operations (Week 2, Days 3-5)
+- **Phase 3.5: Compression - 3-Tier Hybrid Strategy (Week 2, Days 6-7)** ⭐ NEW
 
 **WEEKS 2-3: PDF CORE FEATURES - PRIORITY ⭐ (Phase 4)**
 - PDF Basic Operations (Merge, Split, Extract, Organize, Viewer)
@@ -890,3 +1367,40 @@ No violations detected. All constitutional requirements satisfied:
 - WCAG 2.1 AA compliance
 - Cross-browser compatibility (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
 - Mobile responsiveness (iPhone, Android, tablet)
+
+---
+
+## Future Enhancements (Post-Launch)
+
+### Compress to Size - Phase 2 Improvements
+
+**PDF Compression Status:**
+- **Phase 1 (Current - IMPLEMENTED)**: ✅ Client-side PDF compression using pdf-lib
+  - Works for PDFs <5MB
+  - Achieves 10-30% reduction (structural compression)
+  - Fully private, no server needed
+  - Note: PDFs compress structurally - cannot hit exact target sizes like images
+  - Shows best-effort results with explanatory messaging
+- **Phase 2 (Next - 2-3 hours)**: Server-side Ghostscript compression
+  - For PDFs >5MB or when client compression insufficient
+  - Ghostscript `-dPDFSETTINGS=/ebook` for aggressive compression (40-70% reduction)
+  - Requires: API route + optional BullMQ queue + Docker worker
+  - Consent modal before upload
+  - Auto-delete after processing
+
+**Target Tolerance Shift (Images)**: 
+- **Phase 1 (Current)**: ±5% tolerance accepted (e.g., 500KB target → 475-525KB acceptable)
+  - **Rationale**: More forgiving for launch, achieves "close enough" results faster
+  - Shows exact values: "Target: 500KB, Achieved: 485KB (3% under target)"
+- **Phase 2 (Future)**: Strict 0% tolerance (exact target matching)
+  - **Rationale**: Once users trust the feature, enable stricter mode for precise compliance
+  - Additional micro-optimizations at byte level
+  - May require more processing time (5-15% longer)
+  - User toggle: "Strict Mode (exact size)" vs "Fast Mode (±5%)"
+
+**Additional Enhancements**:
+- Batch compress to size (multiple files to same target)
+- Smart presets ("Email Attachment" = 10MB, "Social Media" = 2MB, "Profile Picture" = 500KB)
+- A/B comparison slider (drag to compare original vs compressed)
+- Background compression via Web Workers for files >50MB
+- Resume compression if browser closes mid-process (IndexedDB checkpoint)

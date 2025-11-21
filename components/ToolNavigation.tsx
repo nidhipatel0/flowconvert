@@ -24,12 +24,13 @@ import {
   Wand2,
   ZoomIn,
   ArrowLeftRight,
+  Clipboard,
 } from 'lucide-react';
 import { useThemeStore } from '@/lib/stores/themeStore';
 import { ThemeDropdown } from './ThemeDropdown';
 import { Settings } from './Settings';
 
-export type TabType = 'images' | 'pdf' | 'ocr' | 'pdf-editor';
+export type TabType = 'images' | 'pdf' | 'compress' | 'ocr' | 'pdf-editor' | 'doc-prep';
 
 interface ToolGroup {
   label: string;
@@ -107,6 +108,15 @@ const pdfTools: ToolGroup[] = [
   },
 ];
 
+const compressTools: ToolGroup[] = [
+  {
+    label: 'Compress',
+    tools: [
+      { id: 'compress-to-size', label: 'Compress', icon: <FileArchive size={27} /> },
+    ],
+  },
+];
+
 const ocrTools: ToolGroup[] = [
   {
     label: 'Scanning',
@@ -150,6 +160,15 @@ const pdfEditorTools: ToolGroup[] = [
     tools: [
       { id: 'editor-translate', label: 'Translate', icon: <Globe size={27} /> },
       { id: 'editor-personalize', label: 'Personalize', icon: <FileCheck size={27} /> },
+    ],
+  },
+];
+
+const docPrepTools: ToolGroup[] = [
+  {
+    label: 'Prepare',
+    tools: [
+      { id: 'doc-prep-start', label: 'Doc Prep', icon: <Clipboard size={27} />, description: 'Prepare documents for Indian government applications' },
     ],
   },
 ];
@@ -200,8 +219,10 @@ export function ToolNavigation({ selectedTool, onSelectTool, activeTab: external
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: 'images', label: 'Images', icon: <ImageIcon size={16} /> },
     { id: 'pdf', label: 'PDF', icon: <FileText size={16} /> },
+    { id: 'compress', label: 'Compress', icon: <FileArchive size={16} /> },
     { id: 'ocr', label: 'OCR', icon: <Sparkles size={16} /> },
     { id: 'pdf-editor', label: 'PDF Editor', icon: <Edit3 size={16} /> },
+    { id: 'doc-prep', label: 'Doc Prep', icon: <Clipboard size={16} /> },
   ];
 
   const getToolsForTab = (): ToolGroup[] => {
@@ -210,10 +231,14 @@ export function ToolNavigation({ selectedTool, onSelectTool, activeTab: external
         return imageTools;
       case 'pdf':
         return pdfTools;
+      case 'compress':
+        return compressTools;
       case 'ocr':
         return ocrTools;
       case 'pdf-editor':
         return pdfEditorTools;
+      case 'doc-prep':
+        return docPrepTools;
       default:
         return [];
     }
@@ -287,7 +312,8 @@ export function ToolNavigation({ selectedTool, onSelectTool, activeTab: external
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center', 
-          flexShrink: 0 
+          flexShrink: 0,
+          marginTop: '5px'
         }}>
           {tool.icon}
         </div>
@@ -515,8 +541,8 @@ export function ToolNavigation({ selectedTool, onSelectTool, activeTab: external
             borderTopWidth: '1px',
             minHeight: '94px',
             maxHeight: 'none', // Allow height to grow for multi-line buttons
-            paddingTop: '1px',
-            paddingBottom: '8px', // Add padding to prevent clipping
+            paddingTop: '4px',
+            paddingBottom: '5px', // Add padding to prevent clipping
             boxSizing: 'border-box',
             overflowY: 'visible' // Don't clip button content
           }}

@@ -9,6 +9,9 @@ import { ESignatureWorkspace } from './esign-tools/ESignatureWorkspace';
 import { InteractiveCropTool } from './image-tools/InteractiveCropTool';
 import { PDFCropTool } from './pdf-tools/PDFCropTool';
 import { OCRScan } from './ocr-tools/OCRScan';
+import { DocumentPrepWorkspace } from './document-prep/DocumentPrepWorkspace';
+import { ImageCompressor } from './compression/ImageCompressor';
+import { PDFCompressor } from './compression/PDFCompressor';
 import { BottomBar } from './BottomBar';
 import { X } from 'lucide-react';
 
@@ -50,8 +53,8 @@ interface MainWorkspaceProps {
 } */
 
 export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps) {
-  const { getActiveFile, files, undoOperation, redoOperation } = useEditorStore();
-  const file = getActiveFile();
+  const { activeFileId, files, undoOperation, redoOperation } = useEditorStore();
+  const file = activeFileId ? files.get(activeFileId) : undefined;
   const [currentPage, setCurrentPage] = useState(() => {
     const saved = getCurrentPdfPage();
     return saved >= 1 ? saved : 1;
@@ -149,7 +152,7 @@ export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps)
     } else {
       setIsLoadingPDF(false);
     }
-  }, [file]);
+  }, [file, file?.previewUrl]);
 
   // Sync current page from FileDetailsSidebar
   useEffect(() => {
@@ -184,7 +187,7 @@ export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps)
 
   // Render visible pages with IntersectionObserver
   useEffect(() => {
-    const customWorkspaceTools = ['crop', 'editor-crop', 'pdf-crop', 'ocr-scan', 'editor-esign'];
+    const customWorkspaceTools = ['crop', 'editor-crop', 'pdf-crop', 'ocr-scan', 'editor-esign', 'doc-prep-start'];
     const hasCustomWorkspace = selectedTool && customWorkspaceTools.includes(selectedTool);
 
     observerRef.current?.disconnect();
@@ -430,6 +433,15 @@ export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps)
       console.log('[MainWorkspace] Rendering OCRScan for tool:', selectedTool);
       return <OCRScan />;
     }
+
+    // Document Prep Tool
+    if (selectedTool === 'doc-prep-start') {
+      console.log('[MainWorkspace] Rendering DocumentPrepWorkspace for tool:', selectedTool);
+      return <DocumentPrepWorkspace />;
+    }
+
+    // Compress to Size (unified for images and PDFs) - sidebar handles UI, show normal preview
+    // PDF Compressor (from pdf tab enhance section) - legacy, show normal preview
 
     // PDF Tools - inputs are now in sidebar, main workspace shows PDF preview
     // (No special handling needed here, PDF preview will show below)

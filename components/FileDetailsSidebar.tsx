@@ -12,6 +12,7 @@ import { CropToolSidebar } from './image-tools/CropToolSidebar';
 import { PDFCropToolSidebar } from './pdf-tools/PDFCropToolSidebar';
 import { OCRScanSidebar } from './ocr-tools/OCRScanSidebar';
 import { ESignatureSidebar } from './esign-tools/ESignatureSidebar';
+import { CompressToSizeSidebar } from './compression/CompressToSizeSidebar';
 
 // Simple state to share current page between components
 let currentPdfPage = 1;
@@ -36,8 +37,8 @@ interface FileDetailsSidebarProps {
 }
 
 export function FileDetailsSidebar({ selectedTool }: FileDetailsSidebarProps) {
-  const { getActiveFile, files, activeFileId, setActiveFile, addFiles, removeFile } = useEditorStore();
-  const file = getActiveFile();
+  const { files, activeFileId, setActiveFile, addFiles, removeFile } = useEditorStore();
+  const file = activeFileId ? files.get(activeFileId) : undefined;
   const fileList = Array.from(files.values());
   const [pdfDoc, setPdfDoc] = useState<any | null>(null); // PDFDocumentProxy from pdfjs-dist
   const [totalPages, setTotalPages] = useState(0);
@@ -67,7 +68,7 @@ export function FileDetailsSidebar({ selectedTool }: FileDetailsSidebarProps) {
           console.error('Error loading PDF:', error);
         });
     }
-  }, [file]);
+  }, [file, file?.previewUrl]);
 
   // Generate thumbnails when PDF loads
   useEffect(() => {
@@ -193,6 +194,13 @@ export function FileDetailsSidebar({ selectedTool }: FileDetailsSidebarProps) {
   // Check if E-signature tool is selected (only if no file type mismatch)
   const isESignToolSelected = selectedTool === 'editor-esign' && !hasFileTypeMismatch;
 
+  // Check if compress to size tool is selected (unified for both images and PDFs)
+  const isCompressToSizeToolSelected = !hasFileTypeMismatch && (
+    selectedTool === 'compress-to-size' ||
+    selectedTool === 'compress-image' || 
+    selectedTool === 'compress-pdf'
+  );
+
   // Check if a PDF tool is selected (only if no file type mismatch)
   const isPDFToolSelected = !hasFileTypeMismatch && (
     selectedTool === 'pdf-merge' ||
@@ -204,7 +212,7 @@ export function FileDetailsSidebar({ selectedTool }: FileDetailsSidebarProps) {
 
   return (
     <div
-      className="w-64 h-full border-l flex flex-col overflow-hidden"
+      className="w-[324px] h-full border-l flex flex-col overflow-hidden"
       style={{
         backgroundColor: 'rgba(var(--color-primary-rgb, 20, 184, 166), 0.1)',
         borderColor: 'rgba(var(--color-primary-rgb, 20, 184, 166), 0.3)'
@@ -222,7 +230,7 @@ export function FileDetailsSidebar({ selectedTool }: FileDetailsSidebarProps) {
       />
 
       {/* Upload Button and File List Section */}
-      <div className="flex flex-col border-b" style={{ borderColor: 'rgba(var(--color-primary-rgb, 20, 184, 166), 0.3)' }}>
+      <div className="flex flex-col border-b" style={{ borderColor: 'rgba(var(--color-primary-rgb, 20, 184, 166), 0.3)', paddingTop: '15px' }}>
         {/* Upload Button */}
         <div className="p-3">
           <button
@@ -249,7 +257,7 @@ export function FileDetailsSidebar({ selectedTool }: FileDetailsSidebarProps) {
           <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
             Files ({fileList.length})
           </div>
-          <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+          <div className="flex flex-col gap-2 max-h-48 overflow-y-auto overflow-x-hidden">
             {fileList.map((f) => {
               const isActive = activeFileId === f.id;
               return (
@@ -294,16 +302,8 @@ export function FileDetailsSidebar({ selectedTool }: FileDetailsSidebarProps) {
                       </div>
                     </div>
                   </button>
-                  {/* Status dot + cross button */}
-                  <div className="absolute top-1 right-1 flex items-center gap-1.5">
-                    <div
-                      className="w-2.5 h-2.5 rounded-full transition-colors"
-                      style={{
-                        backgroundColor: isActive
-                          ? 'hsl(var(--primary))'
-                          : 'rgba(var(--color-primary-rgb, 20, 184, 166), 0.3)',
-                      }}
-                    />
+                  {/* Cross button only (no status dot) */}
+                  <div className="absolute top-1/2 -translate-y-1/2 right-2 flex items-center justify-center">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -493,6 +493,9 @@ export function FileDetailsSidebar({ selectedTool }: FileDetailsSidebarProps) {
         <div className="p-2 overflow-y-auto flex-1">
           <ESignatureSidebar onSignatureCreate={() => {}} />
         </div>
+      ) : isCompressToSizeToolSelected ? (
+        /* Compress to Size Options */
+        <CompressToSizeSidebar />
       ) : showImageToPDFOptions ? (
         /* Image to PDF Options */
         <ImageToPDFSidebar />

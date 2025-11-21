@@ -473,35 +473,142 @@
 
 #### Client-Side Image Processing
 
-- [ ] T021 [P] [US1] Implement image processor wrapper in lib/client-processors/image-processor.ts (browser-image-compression integration, Canvas API for format conversion)
-- [ ] T022 [P] [US1] Implement compression logic in lib/client-processors/compression.ts (quality slider 1-100%, target size mode, real-time size estimation)
-- [ ] T023 [P] [US1] Implement dimension utilities in lib/utils/dimension-utils.ts (percentage ↔ pixel conversion, Instagram/Facebook/Twitter presets)
-- [ ] T024 [P] [US1] Implement metadata processor in lib/client-processors/metadata-processor.ts (EXIF reading, location removal default, user-controlled removal)
-- [ ] T025 [P] [US1] Implement crop utility in lib/utils/crop-utils.ts (freeform, aspect ratio 1:1/4:3/16:9, preset dimensions)
-- [ ] T026 [P] [US1] Implement rotation/flip utility in lib/utils/transform-utils.ts (90°/180°/270° rotation, horizontal/vertical flip)
+- [x] T021 [P] [US0.5] Implement advanced 5-tier compression in lib/client-processors/advanced-image-compression.ts
+  - Tier 1: Format conversion to WebP/AVIF (25-50% savings)
+  - Tier 2: Aggressive quality search with 12 iterations
+  - Tier 3: Metadata removal + double-pass optimization
+  - Tier 4: Advanced JPEG encoding with chroma subsampling
+  - Tier 5: Noise reduction (0.5px blur as last resort)
+  - Progress callbacks (tier, method, 0-100%)
+- [x] T021A [P] [US0.5] Update compression store in lib/stores/compression-store.ts
+  - Add targetValue, targetUnit, allowDimensionReduction states
+  - Add setTargetValue, setTargetUnit, setAllowDimensionReduction actions
+- [x] T021B [P] [US0.5] Implement PDF compression in lib/client-processors/pdf-compression.ts
+  - Client-side for PDFs <5MB using pdf-lib (10-30% reduction)
+  - Integrated into CompressToSizeSidebar with fallback messaging
+  - Note: PDFs compress structurally, not to exact target sizes
+- [ ] T021C [P] [US0.5] Server-side PDF compression (Phase 2)
+  - Set up Ghostscript API route (app/api/compress-pdf/route.ts)
+  - Add BullMQ + Redis job queue for large PDFs
+  - Docker worker with gs compression commands
+  - Consent modal before server upload
+- [ ] T022 [P] [US1] Implement image processor wrapper in lib/client-processors/image-processor.ts (browser-image-compression integration, Canvas API for format conversion)
+- [ ] T023 [P] [US1] Implement compression logic (legacy) in lib/client-processors/compression.ts (quality slider 1-100%, target size mode, real-time size estimation)
+- [ ] T024 [P] [US1] Implement dimension utilities in lib/utils/dimension-utils.ts (percentage ↔ pixel conversion, Instagram/Facebook/Twitter presets)
+- [ ] T025 [P] [US1] Implement metadata processor in lib/client-processors/metadata-processor.ts (EXIF reading, location removal default, user-controlled removal)
+- [ ] T026 [P] [US1] Implement crop utility in lib/utils/crop-utils.ts (freeform, aspect ratio 1:1/4:3/16:9, preset dimensions)
+- [ ] T027 [P] [US1] Implement rotation/flip utility in lib/utils/transform-utils.ts (90°/180°/270° rotation, horizontal/vertical flip)
 
-#### UI Components for Image Tools
+#### UI Components for Compress to Size (US0.5)
 
-- [ ] T027 [P] [US1] Create ImageEditor component in components/ImageEditor.tsx (main container with tool selection, preview panel)
-- [ ] T028 [P] [US1] Create ResizeTool component in components/image-tools/ResizeTool.tsx (dimension inputs with pixel/% toggle, preset selector)
-- [ ] T029 [P] [US1] Create CompressTool component in components/image-tools/CompressTool.tsx (quality slider with real-time size estimate)
-- [ ] T030 [P] [US1] Create CropTool component in components/image-tools/CropTool.tsx (draggable crop area, aspect ratio lock, preset ratios)
-- [ ] T031 [P] [US1] Create RotateFlipTool component in components/image-tools/RotateFlipTool.tsx (rotation buttons, flip buttons)
-- [ ] T032 [P] [US1] Create FormatConverter component in components/image-tools/FormatConverter.tsx (PNG ↔ JPG ↔ WebP ↔ GIF dropdown)
+- [x] T028 [P] [US0.5] Create CompressToSizeSidebar in components/compression/CompressToSizeSidebar.tsx
+  - Target size input (number + unit dropdown: KB/MB)
+  - Results display (target vs achieved, percentage saved)
+  - Preview after compression
+  - Advanced options (allow dimension reduction toggle)
+  - File details card
+- [x] T028A [P] [US0.5] Update ImageCompressor in components/compression/ImageCompressor.tsx
+  - Integrate with CompressToSizeSidebar
+  - Call advanced-image-compression.ts
+  - Handle progress updates
+  - Show results and offer dimension reduction if target not met
+- [x] T028B [P] [US0.5] Update FileDetailsSidebar in components/FileDetailsSidebar.tsx
+  - Conditionally render CompressToSizeSidebar when selectedTool is "compress-to-size"
+- [ ] T028C [P] [US0.5] Update ToolNavigation in components/ToolNavigation.tsx
+  - Add "Compress to Size" tool to Compress tab
+  - Update existing compress tools to point to unified experience
+- [ ] T028D [P] [US0.5] Export CompressToSizeSidebar from components/index.ts
+
+#### UI Components for Image Tools (US1)
+
+- [ ] T029 [P] [US1] Create ImageEditor component in components/ImageEditor.tsx (main container with tool selection, preview panel)
+- [ ] T030 [P] [US1] Create ResizeTool component in components/image-tools/ResizeTool.tsx (dimension inputs with pixel/% toggle, preset selector)
+- [ ] T031 [P] [US1] Create CompressTool component in components/image-tools/CompressTool.tsx (quality slider with real-time size estimate)
+- [ ] T032 [P] [US1] Create CropTool component in components/image-tools/CropTool.tsx (draggable crop area, aspect ratio lock, preset ratios)
+- [ ] T033 [P] [US1] Create RotateFlipTool component in components/image-tools/RotateFlipTool.tsx (rotation buttons, flip buttons)
+- [ ] T034 [P] [US1] Create FormatConverter component in components/image-tools/FormatConverter.tsx (PNG ↔ JPG ↔ WebP ↔ GIF dropdown)
 
 #### Preview & Download
 
-- [ ] T033 [P] [US1] Update PreviewPanel component in components/PreviewPanel.tsx (side-by-side before/after, zoom controls, dimension/size display)
-- [ ] T034 [P] [US1] Implement download handler in lib/utils/download.ts (suggested filenames like "photo_resized_1080x1920.jpg", trigger browser download)
+- [ ] T035 [P] [US1] Update PreviewPanel component in components/PreviewPanel.tsx (side-by-side before/after, zoom controls, dimension/size display)
+- [ ] T036 [P] [US1] Implement download handler in lib/utils/download.ts (suggested filenames like "photo_resized_1080x1920.jpg", trigger browser download)
 
 #### Integration
 
-- [ ] T035 [US1] Integrate image operations with editor store (add operations to queue, update active file, real-time preview updates)
-- [ ] T036 [US1] Wire up ImageEditor with all tool components and preview panel
-- [ ] T037 [US1] Add operation confirmation modal before applying destructive operations
-- [ ] T038 [US1] Test complete workflow: upload → resize → compress → preview → download
+- [ ] T037 [US0.5] Test complete Compress to Size workflow: upload → enter target → compress → preview → download (or auto-resize if target not met)
+- [ ] T038 [US1] Integrate image operations with editor store (add operations to queue, update active file, real-time preview updates)
+- [ ] T039 [US1] Wire up ImageEditor with all tool components and preview panel
+- [ ] T040 [US1] Add operation confirmation modal before applying destructive operations
+- [ ] T041 [US1] Test complete workflow: upload → resize → compress → preview → download
 
 **Checkpoint**: ✅ User Story 1 complete - single file image editing fully functional
+
+---
+
+## Phase 3B: User Story 8 - Indian Document Preparation (Priority: P1) 🎯 MVP
+
+**Goal**: Complete workflow for preparing documents for 14 Indian government/institutional applications with auto-processing, compliance validation, and organized downloads
+
+**Independent Test**: Select "Passport" from Doc Prep dropdown → Upload 8MB photo + 2MB documents → System auto-resizes photo to 600×600px <300KB white bg → Documents optimized to PDF <1MB → Verify compliance badges show ✅ → Download as ZIP "Passport_Documents_20241121.zip"
+
+### Tests for User Story 8 (MANDATORY - TDD Required) ⚠️
+
+> **CRITICAL: Write these tests FIRST, ensure they FAIL before implementation (Red-Green-Refactor)**
+
+- [ ] T200 [P] [US8] Unit test for document requirements config in tests/unit/lib/document-requirements.test.ts (load requirements, validate specs, get by document type)
+- [ ] T201 [P] [US8] Unit test for image processor in tests/unit/lib/document-processor.test.ts (photo processing, signature processing, document processing, background removal, DPI adjustment)
+- [ ] T202 [P] [US8] Unit test for compliance validator in tests/unit/lib/compliance-validator.test.ts (check dimensions, file size, format, DPI validation)
+- [ ] T203 [P] [US8] Integration test for doc prep workflow in tests/integration/document-prep.test.ts (select document → upload files → process → validate → download)
+- [ ] T204 [US8] E2E test for User Story 8 in tests/e2e/user-story-8.spec.ts (complete workflow from document selection to ZIP download)
+
+### Implementation for User Story 8
+
+#### Configuration & Types
+
+- [ ] T205 [P] [US8] Create document requirements config in lib/config/document-requirements.ts (14 document types with all specifications: dimensions, file size, DPI, format, background color)
+- [ ] T206 [P] [US8] Create document prep types in lib/types/document-prep.ts (DocumentCategory, FileRequirement, ProcessingOptions, ProcessingResult, ComplianceStatus)
+
+#### Client-Side Image Processing
+
+- [ ] T207 [P] [US8] Implement photo processor in lib/utils/document-processor.ts (resize to exact dimensions, compress to target size, remove/replace background, set DPI, enhance quality)
+- [ ] T208 [P] [US8] Implement signature processor in lib/utils/document-processor.ts (clean background, crop tightly, resize, compress, black-on-white conversion)
+- [ ] T209 [P] [US8] Implement document processor in lib/utils/document-processor.ts (PDF optimization, image-to-PDF conversion, DPI adjustment, compression)
+- [ ] T210 [P] [US8] Implement background removal in lib/utils/document-processor.ts (detect background color, replace with white, preserve subject, edge smoothing)
+- [ ] T211 [P] [US8] Implement ZIP generator in lib/utils/document-processor.ts (create ZIP from multiple files, organized naming, metadata)
+
+#### UI Components for Doc Prep
+
+- [ ] T212 [P] [US8] Create DocumentPrepWorkspace component in components/document-prep/DocumentPrepWorkspace.tsx (main container, layout, workflow orchestration)
+- [ ] T213 [P] [US8] Create DocumentTypeSelector component in components/document-prep/DocumentTypeSelector.tsx (searchable dropdown with icons, 14 document types, filter logic)
+- [ ] T214 [P] [US8] Create RequirementsChecklist component in components/document-prep/RequirementsChecklist.tsx (display requirements for selected document, show specifications, tooltips)
+- [ ] T215 [P] [US8] Create FileUploadZone component in components/document-prep/FileUploadZone.tsx (drag-drop zones per file type, validation, progress indicators)
+- [ ] T216 [P] [US8] Create ProcessingStatus component in components/document-prep/ProcessingStatus.tsx (compliance badges ✅/⚠️, real-time status, file info display)
+- [ ] T217 [P] [US8] Create ManualAdjustmentPanel component in components/document-prep/ManualAdjustmentPanel.tsx (crop, brightness, contrast, rotate, manual dimensions, quality slider)
+- [ ] T218 [P] [US8] Create DownloadOptions component in components/document-prep/DownloadOptions.tsx (individual download buttons, ZIP download button, filename preview)
+
+#### Processing Modes & Workflow
+
+- [ ] T219 [P] [US8] Implement auto-process mode (instant automatic processing of all uploaded files without user confirmation)
+- [ ] T220 [P] [US8] Implement step-by-step mode (show preview and wait for user approval before processing each file)
+- [ ] T221 [P] [US8] Implement compliance validation (check dimensions, size, format, DPI against requirements, generate ✅/⚠️ badges)
+- [ ] T222 [P] [US8] Implement real-time preview updates as files are processed (Canvas rendering, before/after comparison)
+
+#### Download & Export
+
+- [ ] T223 [P] [US8] Implement individual file download (download one file at a time with descriptive names)
+- [ ] T224 [P] [US8] Implement ZIP download (combine all processed files into organized ZIP with folder structure)
+- [ ] T225 [P] [US8] Implement ZIP naming convention (DocumentType_Documents_YYYYMMDD.zip e.g., "Passport_Documents_20241121.zip")
+- [ ] T226 [P] [US8] Implement file naming within ZIP (DocumentType_FileType_Specs.ext e.g., "Passport_Photo_600x600.jpg")
+
+#### Integration
+
+- [ ] T227 [US8] Add "Doc Prep" tab to main navigation (ToolNavigation component)
+- [ ] T228 [US8] Integrate DocumentPrepWorkspace with MainWorkspace (conditional rendering based on selected tab)
+- [ ] T229 [US8] Wire up document prep store with editor store (shared state management)
+- [ ] T230 [US8] Add tooltips explaining each requirement specification (hover to see why 600×600px, why white background, etc.)
+- [ ] T231 [US8] Test complete workflow: select document type → upload files → auto-process → validate → adjust manually → download ZIP
+
+**Checkpoint**: ✅ User Story 8 complete - Indian Document Preparation fully functional with 14 document types
 
 ---
 

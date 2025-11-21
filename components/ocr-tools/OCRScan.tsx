@@ -6,6 +6,7 @@ import { FileUploadZone } from '../FileUploadZone';
 import { Download, Copy, GripVertical } from 'lucide-react';
 import { loadPDF, renderPDFPage, getPDFPageCount } from '@/lib/utils/pdf-renderer';
 import { setCurrentPdfPage, getCurrentPdfPage } from '../FileDetailsSidebar';
+import { BottomBar } from '../BottomBar';
 
 // Shared state for OCR page synchronization between workspace and sidebar
 let currentOCRPage = 1;
@@ -30,7 +31,7 @@ interface OCRScanProps {
 }
 
 export function OCRScan({ onExit }: OCRScanProps = {}) {
-  const { getActiveFile, files, ocrResult, ocrConfidence, ocrProcessingTime, setOCRResult } = useEditorStore();
+  const { getActiveFile, files, ocrResult, ocrConfidence, ocrProcessingTime, setOCRResult, ocrIsProcessing, ocrProgress } = useEditorStore();
   const file = getActiveFile();
 
   // Resizable divider state
@@ -46,6 +47,7 @@ export function OCRScan({ onExit }: OCRScanProps = {}) {
     return saved >= 1 ? saved : 1;
   });
   const [isLoadingPDF, setIsLoadingPDF] = useState(false);
+  const [zoom, setZoom] = useState(100);
   
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -352,6 +354,47 @@ export function OCRScan({ onExit }: OCRScanProps = {}) {
     );
   }
 
+  // Page navigation handlers
+  const handlePageChange = (page: number) => {
+    if (totalPages === 0) return;
+    const clampedPage = Math.min(Math.max(page, 1), totalPages);
+    setCurrentPage(clampedPage);
+    setCurrentOCRPage(clampedPage);
+    setCurrentPdfPage(clampedPage);
+    pageRefs.current[clampedPage - 1]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      handlePageChange(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      handlePageChange(currentPage + 1);
+    }
+  };
+
+  const handleZoomIn = () => setZoom((prev) => Math.min(prev + 10, 300));
+  const handleZoomOut = () => setZoom((prev) => Math.max(prev - 10, 25));
+  const handleZoomChange = (newZoom: number) => {
+    const sanitized = Math.min(Math.max(newZoom, 25), 300);
+    setZoom(sanitized);
+  };
+
+  const handleFitToWidth = () => {
+    if (!scrollContainerRef.current || totalPages === 0) return;
+    const currentWrapper = pageRefs.current[currentPage - 1];
+    if (!currentWrapper) return;
+    const containerWidth = scrollContainerRef.current.clientWidth - 48;
+    const pageWidth = currentWrapper.offsetWidth;
+    if (pageWidth > 0) {
+      const newZoom = (containerWidth / pageWidth) * 100;
+      setZoom(Math.min(Math.max(newZoom, 25), 300));
+    }
+  };
+
   // Handle copy to clipboard
   const handleCopyText = () => {
     if (!ocrResult) return;
@@ -388,11 +431,12 @@ export function OCRScan({ onExit }: OCRScanProps = {}) {
   } : null;
 
   return (
-    <div
-      ref={containerRef}
-      className="flex-1 flex overflow-hidden relative"
-      style={{ backgroundColor: 'var(--color-background)', cursor: isDragging ? 'col-resize' : 'default' }}
-    >
+    <div className="flex-1 flex flex-col relative" style={{ backgroundColor: 'var(--color-background)' }}>
+      <div
+        ref={containerRef}
+        className="flex-1 flex overflow-hidden relative"
+        style={{ cursor: isDragging ? 'col-resize' : 'default' }}
+      >
       {/* Left Side: File Preview */}
       <div
         ref={scrollContainerRef}
@@ -442,19 +486,26 @@ export function OCRScan({ onExit }: OCRScanProps = {}) {
                       ref={(el) => {
                         pageRefs.current[index] = el;
                       }}
-                      data-page-number={pageNumber}
-                      className="flex flex-col items-center gap-2 w-full"
-                      style={{
-                        minHeight: '80vh', // Ensure each page takes significant space
-                        scrollMarginTop: '20px', // Offset for sticky header
-                      }}
-                    >
-                      <div className="bg-white rounded-lg shadow-2xl">
-                        <canvas
-                          className="max-w-full h-auto"
-                          style={{ display: 'block' }}
-                        />
-                      </div>
+                       data-page-number={pageNumber}
+                       className="flex flex-col items-center gap-2 w-full"
+                       style={{
+                         scrollMarginTop: '20px', // Offset for sticky header
+                       }}
+                     >
+                       <div 
+                         className="relative bg-white rounded-lg shadow-2xl transition-transform duration-200 ease-out"
+                         style={{
+                           transform: `scale(${zoom / 100})`,
+                           transformOrigin: 'top center',
+                           minHeight: '80vh',
+                           minWidth: '450px',
+                         }}
+                       >
+                         <canvas
+                           className="max-w-full h-auto block"
+                           style={{ display: 'block' }}
+                         />
+                       </div>
                       {totalPages > 1 && (
                         <p className="text-xs text-gray-500">Page {pageNumber}</p>
                       )}
@@ -499,13 +550,43 @@ export function OCRScan({ onExit }: OCRScanProps = {}) {
 
       {/* Right Side: Extracted Text */}
       <div
-        className="flex flex-col overflow-hidden"
+        className="flex flex-col overflow-hidden relative"
         style={{ 
           width: `${100 - dividerPosition}%`,
           minHeight: 0, // Critical: allows flex child to shrink and enable scrolling
         }}
       >
-        {ocrResult ? (
+        {ocrIsProcessing ? (
+          /* OCR Processing Loading Indicator */
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div 
+              className="flex flex-col items-center gap-2 px-4 py-3 rounded-lg shadow-lg"
+              style={{
+                backgroundColor: 'rgba(var(--color-primary-rgb, 20, 184, 166), 0.95)',
+                backdropFilter: 'blur(8px)',
+                minWidth: '280px',
+              }}
+            >
+              <div className="flex items-center gap-2 w-full">
+                <div className="flex-shrink-0">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-white">Processing OCR...</p>
+                  <div className="w-full bg-white/20 rounded-full h-1.5 mt-1.5">
+                    <div 
+                      className="bg-white h-1.5 rounded-full transition-all duration-300"
+                      style={{ width: `${ocrProgress}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="flex-shrink-0 text-xs font-medium text-white">
+                  {ocrProgress}%
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : ocrResult ? (
           /* Results View */
           <div className="flex-1 flex flex-col p-4 overflow-hidden" style={{ minHeight: 0 }}>
             {/* Header with Stats */}
@@ -629,6 +710,24 @@ export function OCRScan({ onExit }: OCRScanProps = {}) {
           </div>
         )}
       </div>
+      </div>
+
+      {/* Bottom Navigation Bar */}
+      {isPDF && totalPages > 0 && (
+        <BottomBar
+          currentPage={currentPage}
+          totalPages={totalPages}
+          zoom={zoom}
+          onPreviousPage={handlePreviousPage}
+          onNextPage={handleNextPage}
+          onPageChange={handlePageChange}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onZoomChange={handleZoomChange}
+          onFitToWidth={handleFitToWidth}
+          showPageControls={totalPages > 1}
+        />
+      )}
     </div>
   );
 }

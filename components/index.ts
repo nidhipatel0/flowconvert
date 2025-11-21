@@ -28,6 +28,19 @@ export { CropOverlay } from './image-tools/CropOverlay';
 export { CropToolSidebar } from './image-tools/CropToolSidebar';
 export { PDFCropTool } from './pdf-tools/PDFCropTool';
 export { PDFCropToolVertical } from './pdf-tools/PDFCropToolVertical';
+export { QualitySelector } from './compression/QualitySelector';
+export { ConsentModal } from './compression/ConsentModal';
+export { CompressionProgress } from './compression/CompressionProgress';
+export { ImageCompressor } from './compression/ImageCompressor';
+export { PDFCompressor } from './compression/PDFCompressor';
+export { CompressToSizeSidebar } from './compression/CompressToSizeSidebar';
 export { PDFCropToolSidebar } from './pdf-tools/PDFCropToolSidebar';
 export { OCRScan } from './ocr-tools/OCRScan';
 export { OCRScanSidebar } from './ocr-tools/OCRScanSidebar';
+
+// Document Prep components
+export { DocumentPrepWorkspace } from './document-prep/DocumentPrepWorkspace';
+export { DocumentTypeSelector } from './document-prep/DocumentTypeSelector';
+export { RequirementsChecklist } from './document-prep/RequirementsChecklist';
+export { ProcessedFilesList } from './document-prep/ProcessedFilesList';
+export { DownloadOptions } from './document-prep/DownloadOptions';
