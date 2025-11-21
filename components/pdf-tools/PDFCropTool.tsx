@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, /* useRef */ } from 'react';
 import { CropOverlay } from '../image-tools/CropOverlay';
 import { useEditorStore } from '@/lib/stores/editor-store';
 import { usePDFCropStore } from '@/lib/stores/pdf-crop-store';
@@ -8,7 +8,11 @@ import { loadPDF, renderPDFPage, getPDFPageCount } from '@/lib/utils/pdf-rendere
 import { ChevronLeft, ChevronRight, Rows, Square } from 'lucide-react';
 import { PDFCropToolVertical } from './PDFCropToolVertical';
 
-export function PDFCropTool() {
+interface PDFCropToolProps {
+  onExit?: () => void;
+}
+
+export function PDFCropTool({ onExit }: PDFCropToolProps = {}) {
   const [viewMode, setViewMode] = useState<'single' | 'vertical'>('single');
   const { getActiveFile } = useEditorStore();
   const {
@@ -29,6 +33,24 @@ export function PDFCropTool() {
   const [isLoadingPage, setIsLoadingPage] = useState(false);
   const [isLoadingPDF, setIsLoadingPDF] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Handle ESC key to exit tool
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        console.log('[PDFCropTool] ESC pressed, exiting tool');
+        if (onExit) {
+          onExit();
+        } else {
+          // Dispatch event to exit tool
+          window.dispatchEvent(new CustomEvent('exit-crop-tool'));
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onExit]);
 
   // Reset crop store when component mounts (ensures clean state for auto-selection)
   useEffect(() => {

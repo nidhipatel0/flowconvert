@@ -19,7 +19,7 @@ export function PDFCropToolSidebar() {
     setIsProcessing,
     applyToAllPages,
     setApplyToAllPages,
-    pageCropAreas,
+    // pageCropAreas,
   } = usePDFCropStore();
 
   const file = getActiveFile();

@@ -52,7 +52,10 @@ interface MainWorkspaceProps {
 export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps) {
   const { getActiveFile, files, undoOperation, redoOperation } = useEditorStore();
   const file = getActiveFile();
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(() => {
+    const saved = getCurrentPdfPage();
+    return saved >= 1 ? saved : 1;
+  });
   const [zoom, setZoom] = useState(100);
   const [pdfDoc, setPdfDoc] = useState<any | null>(null); // PDFDocumentProxy from pdfjs-dist
   const [totalPages, setTotalPages] = useState(0);
@@ -83,6 +86,11 @@ export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps)
     setPdfDoc(null);
     setTotalPages(0);
     setCurrentPage(1);
+    
+    // Reset scroll position to top when new file is loaded
+    if (containerRef.current) {
+      containerRef.current.scrollTop = 0;
+    }
 
     if (file && file.format === 'PDF') {
       console.log('Loading PDF:', {
@@ -112,9 +120,15 @@ export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps)
         .then((pdf) => {
           console.log('PDF loaded successfully:', pdf);
           setPdfDoc(pdf);
-          setTotalPages(getPDFPageCount(pdf));
-          setCurrentPage(1);
-          setCurrentPdfPage(1);
+          const pageCount = getPDFPageCount(pdf);
+          setTotalPages(pageCount);
+          
+          // Preserve the current page from global state if valid, otherwise default to 1
+          const savedPage = getCurrentPdfPage();
+          const pageToSet = (savedPage >= 1 && savedPage <= pageCount) ? savedPage : 1;
+          
+          setCurrentPage(pageToSet);
+          setCurrentPdfPage(pageToSet);
           setIsLoadingPDF(false);
         })
         .catch((error) => {
@@ -267,30 +281,56 @@ export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps)
     };
   }, [pdfDoc, totalPages, isPDF, selectedTool, hasFileTypeMismatch]);
 
-  // Ensure we reset scroll and current page when exiting custom tools like e-sign
+  // Preserve current page when exiting custom tools
   useEffect(() => {
     const prevTool = prevSelectedToolRef.current;
     if (prevTool && !selectedTool && containerRef.current) {
-      setCurrentPage(1);
-      setCurrentPdfPage(1);
-      containerRef.current.scrollTo({ top: 0, behavior: 'auto' });
+      // Preserve the current page from global state
+      const savedPage = getCurrentPdfPage();
+      if (savedPage >= 1 && savedPage <= totalPages) {
+        setCurrentPage(savedPage);
+        // Scroll to the preserved page after a small delay to ensure refs are ready
+        setTimeout(() => {
+          const targetPage = pageRefs.current[savedPage - 1];
+          if (targetPage) {
+            containerRef.current?.scrollTo({
+              top: targetPage.offsetTop - (containerRef.current?.offsetTop || 0),
+              behavior: 'auto',
+            });
+          }
+        }, 100);
+      }
     }
     prevSelectedToolRef.current = selectedTool || null;
-  }, [selectedTool, setCurrentPdfPage]);
+  }, [selectedTool, totalPages]);
 
   // Handle ESC key to exit tool (only if no signature is selected in e-sign tool)
   useEffect(() => {
-    const handleExitTool = () => {
+    const handleExitESignTool = () => {
       if (selectedTool === 'editor-esign' && onClearTool) {
+        onClearTool();
+      }
+    };
+
+    const handleExitCropTool = () => {
+      if ((selectedTool === 'crop' || selectedTool === 'editor-crop' || selectedTool === 'pdf-crop') && onClearTool) {
+        onClearTool();
+      }
+    };
+
+    const handleExitOCRTool = () => {
+      if (selectedTool === 'ocr-scan' && onClearTool) {
         onClearTool();
       }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && selectedTool && onClearTool) {
-        // For e-sign tool, let it handle ESC internally first (it will dispatch exit-esign-tool event)
-        if (selectedTool === 'editor-esign') {
-          // Don't handle ESC here, let ESignatureWorkspace handle it
+        // For tools with custom workspaces, let them handle ESC internally first
+        if (selectedTool === 'editor-esign' || selectedTool === 'crop' || 
+            selectedTool === 'editor-crop' || selectedTool === 'pdf-crop' || 
+            selectedTool === 'ocr-scan') {
+          // Don't handle ESC here, let the tool handle it and dispatch exit event
           return;
         } else {
           // For other tools, exit immediately
@@ -301,11 +341,15 @@ export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps)
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('exit-esign-tool', handleExitTool);
+    window.addEventListener('exit-esign-tool', handleExitESignTool);
+    window.addEventListener('exit-crop-tool', handleExitCropTool);
+    window.addEventListener('exit-ocr-tool', handleExitOCRTool);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('exit-esign-tool', handleExitTool);
+      window.removeEventListener('exit-esign-tool', handleExitESignTool);
+      window.removeEventListener('exit-crop-tool', handleExitCropTool);
+      window.removeEventListener('exit-ocr-tool', handleExitOCRTool);
     };
   }, [selectedTool, onClearTool]);
 

@@ -166,7 +166,6 @@ export function PDFThumbnailSidebar({ fileId }: PDFThumbnailSidebarProps) {
           className="flex-1 overflow-y-auto p-2 space-y-2"
         >
           {Array.from({ length: totalPages }).map((_, index) => {
-            
             const pageNumber = index + 1;
             const isActive = pageNumber === currentPage;
             const thumbnail = thumbnails[index];

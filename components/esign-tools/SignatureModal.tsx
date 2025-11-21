@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { X } from 'lucide-react';
 
 export interface SignatureData {
@@ -55,24 +55,35 @@ export function SignatureModal({ isOpen, onClose, onSignatureCreate }: Signature
     
     if (pts.length === 2) {
       // Simple line for just 2 points
-      ctx.moveTo(pts[0].x, pts[0].y);
-      ctx.lineTo(pts[1].x, pts[1].y);
+      const p0 = pts[0];
+      const p1 = pts[1];
+      if (!p0 || !p1) return;
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(p1.x, p1.y);
     } else if (pts.length === 3) {
       // Quadratic curve for 3 points
-      ctx.moveTo(pts[0].x, pts[0].y);
-      const midX = (pts[0].x + pts[2].x) / 2;
-      const midY = (pts[0].y + pts[2].y) / 2;
-      ctx.quadraticCurveTo(pts[1].x, pts[1].y, midX, midY);
-      ctx.lineTo(pts[2].x, pts[2].y);
+      const p0 = pts[0];
+      const p1 = pts[1];
+      const p2 = pts[2];
+      if (!p0 || !p1 || !p2) return;
+      ctx.moveTo(p0.x, p0.y);
+      const midX = (p0.x + p2.x) / 2;
+      const midY = (p0.y + p2.y) / 2;
+      ctx.quadraticCurveTo(p1.x, p1.y, midX, midY);
+      ctx.lineTo(p2.x, p2.y);
     } else {
       // Catmull-Rom spline for smooth pen-like drawing
-      ctx.moveTo(pts[0].x, pts[0].y);
+      const firstPt = pts[0];
+      if (!firstPt) return;
+      ctx.moveTo(firstPt.x, firstPt.y);
       
       for (let i = 0; i < pts.length - 1; i++) {
         const p0 = pts[Math.max(0, i - 1)];
         const p1 = pts[i];
         const p2 = pts[i + 1];
         const p3 = pts[Math.min(pts.length - 1, i + 2)];
+        
+        if (!p0 || !p1 || !p2 || !p3) continue;
         
         // Catmull-Rom to Bezier conversion
         const cp1x = p1.x + (p2.x - p0.x) / 6;
@@ -93,8 +104,16 @@ export function SignatureModal({ isOpen, onClose, onSignatureCreate }: Signature
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    let clientX: number, clientY: number;
+    if ('touches' in e) {
+      const touch = e.touches[0];
+      if (!touch) return { x: 0, y: 0 };
+      clientX = touch.clientX;
+      clientY = touch.clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
     
     // Calculate position relative to canvas, then scale to canvas coordinates
     const x = (clientX - rect.left) * scaleX;
@@ -137,6 +156,7 @@ export function SignatureModal({ isOpen, onClose, onSignatureCreate }: Signature
       if (currentStroke.length === 0) return true;
       
       const lastPoint = currentStroke[currentStroke.length - 1];
+      if (!lastPoint) return true;
       const distance = Math.sqrt(
         Math.pow(newPoint.x - lastPoint.x, 2) + Math.pow(newPoint.y - lastPoint.y, 2)
       );
@@ -190,7 +210,7 @@ export function SignatureModal({ isOpen, onClose, onSignatureCreate }: Signature
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const alpha = data[(y * width + x) * 4 + 3];
-        if (alpha > 0) {
+        if (alpha !== undefined && alpha > 0) {
           if (x < minX) minX = x;
           if (x > maxX) maxX = x;
           if (y < minY) minY = y;
@@ -344,7 +364,7 @@ export function SignatureModal({ isOpen, onClose, onSignatureCreate }: Signature
           const g = data[i + 1];
           const b = data[i + 2];
 
-          if (r > 240 && g > 240 && b > 240) {
+          if (r !== undefined && g !== undefined && b !== undefined && r > 240 && g > 240 && b > 240) {
             data[i + 3] = 0;
           }
         }

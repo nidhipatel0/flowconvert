@@ -25,7 +25,11 @@ export function getCurrentOCRPage() {
   return currentOCRPage;
 }
 
-export function OCRScan() {
+interface OCRScanProps {
+  onExit?: () => void;
+}
+
+export function OCRScan({ onExit }: OCRScanProps = {}) {
   const { getActiveFile, files, ocrResult, ocrConfidence, ocrProcessingTime, setOCRResult } = useEditorStore();
   const file = getActiveFile();
 
@@ -37,7 +41,10 @@ export function OCRScan() {
   // PDF rendering state
   const [pdfDoc, setPdfDoc] = useState<any | null>(null);
   const [totalPages, setTotalPages] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(() => {
+    const saved = getCurrentPdfPage();
+    return saved >= 1 ? saved : 1;
+  });
   const [isLoadingPDF, setIsLoadingPDF] = useState(false);
   
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -48,15 +55,23 @@ export function OCRScan() {
   // Track if scroll is initiated by user
   const isUserScroll = useRef(false);
 
-  // Reset OCR page to first page whenever this workspace mounts
+  // Handle ESC key to exit tool
   useEffect(() => {
-    setCurrentPage(1);
-    setCurrentOCRPage(1);
-    setCurrentPdfPage(1);
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0;
-    }
-  }, []);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        console.log('[OCRScan] ESC pressed, exiting tool');
+        if (onExit) {
+          onExit();
+        } else {
+          // Dispatch event to exit tool
+          window.dispatchEvent(new CustomEvent('exit-ocr-tool'));
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onExit]);
 
   // Register callback for OCR page synchronization
   useEffect(() => {
@@ -71,13 +86,13 @@ export function OCRScan() {
 
   // Sync currentPage to shared state when it changes (from navigation buttons or scroll)
   useEffect(() => {
-    if (currentPage !== currentOCRPage) {
+    if (currentPage !== currentOCRPage && totalPages > 0) {
       console.log('[OCRScan] Page changed from workspace:', currentPage);
       setCurrentOCRPage(currentPage);
       // Also update global PDF page so thumbnails sync
       setCurrentPdfPage(currentPage);
     }
-  }, [currentPage]);
+  }, [currentPage, totalPages]);
 
   // Listen to shared state changes from sidebar (OCR sidebar)
   useEffect(() => {
@@ -121,14 +136,7 @@ export function OCRScan() {
   useEffect(() => {
     setPdfDoc(null);
     setTotalPages(0);
-    setCurrentPage(1);
-    setCurrentOCRPage(1); // Reset shared state
-    setCurrentPdfPage(1);
     renderedPages.current.clear();
-    
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0;
-    }
 
     if (file && isPDF && file.originalFile) {
       console.log('[OCRScan] Loading PDF:', file.name);
@@ -140,9 +148,13 @@ export function OCRScan() {
           const pageCount = getPDFPageCount(pdf);
           setPdfDoc(pdf);
           setTotalPages(pageCount);
-          setCurrentPage(1);
-          setCurrentOCRPage(1); // Reset shared state
-          setCurrentPdfPage(1);
+          
+          // Preserve the current page from global state if valid, otherwise default to 1
+          const savedPage = getCurrentPdfPage();
+          const pageToSet = (savedPage >= 1 && savedPage <= pageCount) ? savedPage : 1;
+          setCurrentPage(pageToSet);
+          setCurrentOCRPage(pageToSet);
+          setCurrentPdfPage(pageToSet);
           setIsLoadingPDF(false);
         })
         .catch((error) => {
@@ -151,6 +163,21 @@ export function OCRScan() {
         });
     }
   }, [file, isPDF]);
+
+  // Scroll to the current page when PDF is first loaded
+  useEffect(() => {
+    if (pdfDoc && isPDF && totalPages > 0 && currentPage >= 1 && currentPage <= totalPages) {
+      // Small delay to ensure page refs are populated
+      const timer = setTimeout(() => {
+        const targetPage = pageRefs.current[currentPage - 1];
+        if (targetPage) {
+          targetPage.scrollIntoView({ behavior: 'auto', block: 'start' });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [pdfDoc, isPDF, totalPages]); // Only run when PDF is loaded, not on currentPage changes
 
   // Lazy Render PDF pages using IntersectionObserver
   useEffect(() => {
@@ -228,7 +255,12 @@ export function OCRScan() {
         observerRef.current = null;
       };
     }
-  }, [pdfDoc, totalPages, isPDF]);
+    
+    return () => {
+      observerRef.current?.disconnect();
+      observerRef.current = null;
+    };
+  }, [pdfDoc, totalPages, isPDF, currentPage]);
 
   // Scroll to page when currentPage changes from sidebar/navigation (programmatic)
   useEffect(() => {

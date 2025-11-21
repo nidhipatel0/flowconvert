@@ -77,8 +77,14 @@ async function preprocessImage(
         // 1. Convert to grayscale and enhance contrast
         const contrastFactor = options.contrastEnhancement || 1.5;
         for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          
+          if (r === undefined || g === undefined || b === undefined) continue;
+          
           // Grayscale conversion (luminance)
-          const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
 
           // Contrast enhancement
           const enhanced = ((gray - 128) * contrastFactor) + 128;
@@ -117,10 +123,17 @@ async function preprocessImage(
               for (let ky = -1; ky <= 1; ky++) {
                 for (let kx = -1; kx <= 1; kx++) {
                   const idx = ((y + ky) * canvas.width + (x + kx)) * 4;
-                  const weight = kernel[ky + 1][kx + 1];
-                  r += tempData[idx] * weight;
-                  g += tempData[idx + 1] * weight;
-                  b += tempData[idx + 2] * weight;
+                  const kernelRow = kernel[ky + 1];
+                  const weight = kernelRow ? kernelRow[kx + 1] : 0;
+                  const rVal = tempData[idx];
+                  const gVal = tempData[idx + 1];
+                  const bVal = tempData[idx + 2];
+                  
+                  if (weight !== undefined && rVal !== undefined && gVal !== undefined && bVal !== undefined) {
+                    r += rVal * weight;
+                    g += gVal * weight;
+                    b += bVal * weight;
+                  }
                 }
               }
 

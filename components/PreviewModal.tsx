@@ -24,8 +24,8 @@ export function PreviewModal({
   fileType,
   originalSize,
   newSize,
-  originalFileName,
-  newFileName,
+  originalFileName: _originalFileName,
+  newFileName: _newFileName,
 }: PreviewModalProps) {
   const handleBackdropClick = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {

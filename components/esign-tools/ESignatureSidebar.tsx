@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { SignatureModal, SignatureData } from './SignatureModal';
 import { PenTool, Download, Eye, X } from 'lucide-react';
 
+// Re-export SignatureData for other components
+export type { SignatureData };
+
 interface ESignatureSidebarProps {
   onSignatureCreate: (signature: SignatureData) => void;
 }

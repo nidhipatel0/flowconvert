@@ -2,19 +2,23 @@
 
 import { useState, useEffect } from 'react';
 import { CropOverlay } from './CropOverlay';
-import { cropImage } from '@/lib/client-processors/image-processor';
+// import { cropImage } from '@/lib/client-processors/image-processor';
 import { useEditorStore } from '@/lib/stores/editor-store';
-import { useCropStore, ASPECT_RATIO_PRESETS } from '@/lib/stores/crop-store';
+import { useCropStore, /* ASPECT_RATIO_PRESETS */ } from '@/lib/stores/crop-store';
 
-export function InteractiveCropTool() {
-  const { getActiveFile, updateFileData, setError } = useEditorStore();
+interface InteractiveCropToolProps {
+  onExit?: () => void;
+}
+
+export function InteractiveCropTool({ onExit }: InteractiveCropToolProps = {}) {
+  const { getActiveFile, /* updateFileData, setError */ } = useEditorStore();
   const {
     cropArea,
     selectedRatio,
-    isProcessing,
+    // isProcessing,
     setCropArea,
-    setSelectedRatio,
-    setIsProcessing,
+    // setSelectedRatio,
+    // setIsProcessing,
   } = useCropStore();
 
   const file = getActiveFile();
@@ -36,6 +40,24 @@ export function InteractiveCropTool() {
       img.src = file.previewUrl;
     }
   }, [file?.previewUrl, setCropArea]);
+
+  // Handle ESC key to exit tool
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        console.log('[InteractiveCropTool] ESC pressed, exiting tool');
+        if (onExit) {
+          onExit();
+        } else {
+          // Dispatch event to exit tool
+          window.dispatchEvent(new CustomEvent('exit-crop-tool'));
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onExit]);
 
   // Update container size based on window
   useEffect(() => {

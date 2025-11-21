@@ -39,8 +39,9 @@ export function PDFToolsSidebar({ selectedTool }: PDFToolsSidebarProps) {
 
   // Auto-select first PDF file when tool changes
   useEffect(() => {
-    if (files.length > 0 && !selectedFile) {
-      setSelectedFile(files[0].id);
+    const firstFile = files[0];
+    if (files.length > 0 && !selectedFile && firstFile) {
+      setSelectedFile(firstFile.id);
     }
   }, [files, selectedFile]);
 

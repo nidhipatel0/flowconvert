@@ -5,7 +5,7 @@ import { useEditorStore } from '@/lib/stores/editor-store';
 import { FileUploadZone } from '../FileUploadZone';
 import { loadPDF, renderPDFPage, getPDFPageCount } from '@/lib/utils/pdf-renderer';
 import { setCurrentPdfPage, getCurrentPdfPage } from '../FileDetailsSidebar';
-import { Download, RotateCw, Trash2 } from 'lucide-react';
+import { RotateCw, Trash2 } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 import { PreviewModal } from '../PreviewModal';
 import { BottomBar } from '../BottomBar';
@@ -90,24 +90,42 @@ export function ESignatureWorkspace() {
   useEffect(() => {
     setPdfDoc(null);
     setTotalPages(0);
-    setCurrentPage(1);
     setSignatures([]);
-    setCurrentPdfPage(1);
 
     if (file && isPDF && file.originalFile) {
       console.log('[ESignature] Loading PDF:', file.name);
       loadPDF(file.originalFile)
         .then((pdf) => {
           setPdfDoc(pdf);
-          setTotalPages(getPDFPageCount(pdf));
-          setCurrentPage(1);
-          setCurrentPdfPage(1);
+          const totalPagesCount = getPDFPageCount(pdf);
+          setTotalPages(totalPagesCount);
+          
+          // Preserve the current page from global state if valid, otherwise default to 1
+          const savedPage = getCurrentPdfPage();
+          const pageToSet = (savedPage >= 1 && savedPage <= totalPagesCount) ? savedPage : 1;
+          setCurrentPage(pageToSet);
+          setCurrentPdfPage(pageToSet);
         })
         .catch((error) => {
           console.error('[ESignature] Error loading PDF:', error);
         });
     }
   }, [file, isPDF]);
+
+  // Scroll to the current page when PDF is first loaded
+  useEffect(() => {
+    if (pdfDoc && isPDF && totalPages > 0 && currentPage >= 1 && currentPage <= totalPages) {
+      // Small delay to ensure page refs are populated
+      const timer = setTimeout(() => {
+        const targetPage = pageRefs.current[currentPage - 1];
+        if (targetPage) {
+          targetPage.scrollIntoView({ behavior: 'auto', block: 'start' });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [pdfDoc, isPDF, totalPages]); // Only run when PDF is loaded, not on currentPage changes
 
   // Render visible pages with IntersectionObserver
   useEffect(() => {
@@ -183,6 +201,14 @@ export function ESignatureWorkspace() {
       window.removeEventListener('signature-selected', handleSignatureSelected);
     };
   }, []);
+
+  // Scroll to current page when a tool is selected
+  useEffect(() => {
+    if (pendingSignature && currentPage >= 1 && currentPage <= totalPages) {
+      // Scroll to the current page to make it visible
+      pageRefs.current[currentPage - 1]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [pendingSignature, currentPage, totalPages]);
 
   // Place signature on PDF click
   const handlePDFClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -486,14 +512,14 @@ export function ESignatureWorkspace() {
   }, [file, redoOperation]);
 
   // Resize signature
-  const handleResize = useCallback((sigId: string, newWidth: number, newHeight: number) => {
-    setSignatures(sigs =>
-      sigs.map(sig => {
-        if (sig.id !== sigId) return sig;
-        return { ...sig, width: newWidth, height: newHeight };
-      })
-    );
-  }, []);
+  // const handleResize = useCallback((sigId: string, newWidth: number, newHeight: number) => {
+  //   setSignatures(sigs =>
+  //     sigs.map(sig => {
+  //       if (sig.id !== sigId) return sig;
+  //       return { ...sig, width: newWidth, height: newHeight };
+  //     })
+  //   );
+  // }, []);
 
   // Generate signed PDF (shared between preview and download)
   const generateSignedPDF = useCallback(async () => {
@@ -503,20 +529,27 @@ export function ESignatureWorkspace() {
 
     try {
       const blob = file.originalFile || file.data;
+      if (!blob) {
+        console.error('[ESignature] No file data available');
+        return null;
+      }
       const arrayBuffer = await (blob instanceof Blob ? blob.arrayBuffer() : Promise.resolve(blob));
       const pdfDocument = await PDFDocument.load(arrayBuffer);
 
       // Group signatures by page
       const signaturesByPage = signatures.reduce((acc, sig) => {
-        if (!acc[sig.page]) acc[sig.page] = [];
-        acc[sig.page].push(sig);
+        const pageKey = sig.page;
+        if (!acc[pageKey]) acc[pageKey] = [];
+        acc[pageKey]!.push(sig);
         return acc;
       }, {} as Record<number, PlacedSignature[]>);
 
       // Add signatures to each page
       for (const [pageNum, pageSigs] of Object.entries(signaturesByPage)) {
-        const page = pdfDocument.getPages()[parseInt(pageNum) - 1];
-        if (!page) continue;
+        const pageIndex = parseInt(pageNum) - 1;
+        const pages = pdfDocument.getPages();
+        if (pageIndex < 0 || pageIndex >= pages.length) continue;
+        const page = pages[pageIndex]!; // We check bounds above
 
         for (const sig of pageSigs) {
           // Fetch and embed signature image
@@ -531,14 +564,14 @@ export function ESignatureWorkspace() {
             y: pageHeight - sig.y - sig.height,
             width: sig.width,
             height: sig.height,
-            rotate: { type: 'degrees', angle: sig.rotation },
+            rotate: { type: 'degrees' as any, angle: sig.rotation },
           });
         }
       }
 
       // Save signed PDF
       const pdfBytes = await pdfDocument.save();
-      return new Blob([pdfBytes], { type: 'application/pdf' });
+      return new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
     } catch (error) {
       console.error('[ESignature] Error generating signed PDF:', error);
       return null;
@@ -672,6 +705,7 @@ export function ESignatureWorkspace() {
             style={{
               backgroundColor: 'rgba(var(--color-primary-rgb, 20, 184, 166), 0.2)',
               color: 'hsl(var(--foreground))',
+              outline: 'none',
             }}
           >
             <RotateCw size={12} className="flex-shrink-0" /> <span>Rotate</span>
@@ -682,6 +716,7 @@ export function ESignatureWorkspace() {
             style={{
               backgroundColor: 'rgba(239, 68, 68, 0.2)',
               color: 'rgb(239, 68, 68)',
+              outline: 'none',
             }}
           >
             <Trash2 size={12} className="flex-shrink-0" /> <span>Delete</span>
@@ -758,6 +793,7 @@ export function ESignatureWorkspace() {
                             backgroundColor: isSelected ? 'rgba(var(--color-primary-rgb, 20, 184, 166), 0.15)' : 'transparent',
                             boxShadow: isSelected ? '0 0 8px rgba(var(--color-primary-rgb, 20, 184, 166), 0.4)' : 'none',
                             zIndex: 10,
+                            outline: 'none',
                           }}
                         >
                           <img

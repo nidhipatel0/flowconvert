@@ -376,7 +376,7 @@ export async function cropPDF(
       const page = pages[pageNum - 1];
       if (!page) return;
 
-      const { width: pageWidth, height: pageHeight } = page.getSize();
+      const { width: _pageWidth, height: pageHeight } = page.getSize();
 
       // Convert crop coordinates (top-left origin) to PDF coordinates (bottom-left origin)
       const pdfY = pageHeight - params.y - params.height;

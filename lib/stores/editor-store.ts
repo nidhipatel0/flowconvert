@@ -587,12 +587,12 @@ export const useEditorStore = create<EditorState>()(
           }
 
           // Create new preview URL from previous state
-          const newPreviewUrl = URL.createObjectURL(previousBlob);
+          const newPreviewUrl = previousBlob ? URL.createObjectURL(previousBlob) : file.previewUrl;
 
           const updatedFile = {
             ...file,
-            data: previousBlob,
-            originalFile: previousBlob,
+            data: previousBlob || file.data,
+            originalFile: previousBlob || file.originalFile,
             previewUrl: newPreviewUrl,
             state: FileState.READY,
           };
@@ -641,12 +641,12 @@ export const useEditorStore = create<EditorState>()(
           }
 
           // Create new preview URL from next state
-          const newPreviewUrl = URL.createObjectURL(nextBlob);
+          const newPreviewUrl = nextBlob ? URL.createObjectURL(nextBlob) : file.previewUrl;
 
           const updatedFile = {
             ...file,
-            data: nextBlob,
-            originalFile: nextBlob,
+            data: nextBlob || file.data,
+            originalFile: nextBlob || file.originalFile,
             previewUrl: newPreviewUrl,
             state: FileState.READY,
           };

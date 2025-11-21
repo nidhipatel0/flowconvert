@@ -154,6 +154,46 @@ Strict mode enabled with the following rules:
 - No implicit returns
 - No unused locals/parameters
 
+**CRITICAL: TypeScript Error Prevention Rules** (Must follow to avoid compilation errors):
+
+1. **Unused Variables/Imports (TS6133)**
+   - Remove all unused imports immediately
+   - Remove all declared but unused variables
+   - Clean up destructured values that aren't used
+
+2. **Null/Undefined Safety (TS2532, TS18048)**
+   - Always add null checks before accessing object properties
+   - Use optional chaining (`?.`) or explicit checks (`if (obj)`)
+   - Check array elements exist before accessing: `if (arr[i] !== undefined)`
+   - Example: `if (ctx) { ctx.drawImage(...) }` or `ctx?.drawImage(...)`
+
+3. **Type Assertions and Literals**
+   - Use `as const` for literal types: `{ type: 'degrees' as const }`
+   - Cast to specific types when needed: `previousBlob as Blob`
+   - Ensure interface properties match exactly
+
+4. **Interface Completeness**
+   - Always include all required properties in interface definitions
+   - Don't assume properties exist - check the interface definition
+   - Export/import types correctly between modules
+
+5. **Blob/ArrayBuffer Handling**
+   - Use `.buffer` for Uint8Array: `new Blob([uint8Array.buffer], ...)`
+   - Ensure BlobPart types match (use ArrayBuffer, not Uint8Array directly)
+
+6. **Array Access Safety**
+   - Check array length before accessing: `if (pts.length >= 4) { const p3 = pts[3] }`
+   - Verify indices exist before use
+
+7. **useEffect Returns**
+   - All useEffect hooks must return cleanup function or undefined
+   - Example: `return () => { observer?.disconnect() };`
+
+8. **Before Committing/Pushing**
+   - **ALWAYS run**: `npx tsc --noEmit`
+   - Fix ALL errors before committing
+   - Do not suppress or ignore TypeScript errors
+
 ### ESLint
 
 - Cyclomatic complexity limit: 10

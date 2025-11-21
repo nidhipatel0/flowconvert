@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Moon, Sun, Upload, X } from 'lucide-react';
+import { Moon, Sun, Upload, /* X */ } from 'lucide-react';
 import { useEditorStore } from '@/lib/stores/editor-store';
 import {
   Image as ImageIcon,
@@ -174,7 +174,7 @@ export function ToolNavigation({ selectedTool, onSelectTool, activeTab: external
   const [isLightMode, setIsLightMode] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { currentTheme, setTheme } = useThemeStore();
-  const { files, clearFiles } = useEditorStore();
+  const { files, /* clearFiles */ } = useEditorStore();
   const hasFiles = files.size > 0;
 
   // Initialize light mode state on mount
