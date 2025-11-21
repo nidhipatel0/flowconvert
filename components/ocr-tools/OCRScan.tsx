@@ -34,6 +34,11 @@ export function OCRScan({ onExit }: OCRScanProps = {}) {
   const { getActiveFile, files, ocrResult, ocrConfidence, ocrProcessingTime, setOCRResult, ocrIsProcessing, ocrProgress } = useEditorStore();
   const file = getActiveFile();
 
+  // Debug: Log OCR processing state
+  useEffect(() => {
+    console.log('[OCRScan] ocrIsProcessing:', ocrIsProcessing, 'ocrProgress:', ocrProgress);
+  }, [ocrIsProcessing, ocrProgress]);
+
   // Resizable divider state
   const [dividerPosition, setDividerPosition] = useState(40); // percentage
   const [isDragging, setIsDragging] = useState(false);

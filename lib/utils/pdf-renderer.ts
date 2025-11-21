@@ -161,7 +161,6 @@ export async function renderPDFPage(
   }
 
   const page = await pdf.getPage(pageNumber);
-
   const viewport = page.getViewport({ scale: options.scale || 1.0 });
   const context = canvas.getContext('2d');
 

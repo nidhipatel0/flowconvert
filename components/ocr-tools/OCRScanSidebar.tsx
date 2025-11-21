@@ -122,8 +122,8 @@ export function OCRScanSidebar() {
       return;
     }
 
-    setOCRProcessing(true);
     clearOCRResult();
+    setOCRProcessing(true);
     setError(null);
 
     try {

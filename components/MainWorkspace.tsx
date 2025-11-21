@@ -53,8 +53,12 @@ interface MainWorkspaceProps {
 } */
 
 export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps) {
-  const { activeFileId, files, undoOperation, redoOperation } = useEditorStore();
+  // Use selector to get the active file - this ensures we re-render when the file changes
+  const activeFileId = useEditorStore((state) => state.activeFileId);
+  const files = useEditorStore((state) => state.files);
   const file = activeFileId ? files.get(activeFileId) : undefined;
+  const undoOperation = useEditorStore((state) => state.undoOperation);
+  const redoOperation = useEditorStore((state) => state.redoOperation);
   const [currentPage, setCurrentPage] = useState(() => {
     const saved = getCurrentPdfPage();
     return saved >= 1 ? saved : 1;
@@ -79,7 +83,7 @@ export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps)
   const canUndo = file ? (fileHistory.get(file.id)?.length || 0) > 0 : false;
   const canRedo = file ? (fileRedoHistory.get(file.id)?.length || 0) > 0 : false;
 
-  // Convert Map to Array
+  // Convert Map to Array (using files from above)
   const fileList = Array.from(files.values());
   const isPDF = file?.format === 'PDF';
 
@@ -89,6 +93,7 @@ export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps)
     setPdfDoc(null);
     setTotalPages(0);
     setCurrentPage(1);
+    renderedPages.current.clear(); // Clear rendered pages tracking
     
     // Reset scroll position to top when new file is loaded
     if (containerRef.current) {
@@ -190,10 +195,13 @@ export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps)
     const customWorkspaceTools = ['crop', 'editor-crop', 'pdf-crop', 'ocr-scan', 'editor-esign', 'doc-prep-start'];
     const hasCustomWorkspace = selectedTool && customWorkspaceTools.includes(selectedTool);
 
+    // Clean up previous observer and rendered pages
     observerRef.current?.disconnect();
     observerRef.current = null;
+    renderedPages.current.clear();
 
     if (isPDF && pdfDoc && !hasCustomWorkspace && !hasFileTypeMismatch) {
+
       // Force clear cache if we just exited a tool
       if (prevSelectedToolRef.current && !selectedTool) {
         renderedPages.current.clear();
@@ -219,56 +227,61 @@ export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps)
           }
         }
 
-        observerRef.current = new IntersectionObserver(
-          (entries) => {
-            entries.forEach((entry) => {
-              if (entry.isIntersecting) {
-                const pageNum = Number(entry.target.getAttribute('data-page-number'));
+      // Set up IntersectionObserver first
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const pageNum = Number(entry.target.getAttribute('data-page-number'));
 
-                // Render page if not already rendered
-                if (!renderedPages.current.has(pageNum)) {
-                  const wrapper = pageRefs.current[pageNum - 1];
-                  const canvas = wrapper?.querySelector('canvas');
-                  if (canvas) {
-                    renderedPages.current.add(pageNum);
-                    renderPDFPage(pdfDoc, pageNum, canvas, { scale: 1.5 })
-                      .catch(err => {
-                        console.error(`Error rendering page ${pageNum}`, err);
-                        renderedPages.current.delete(pageNum);
-                      });
-                  }
-                }
-
-                // Update current page if this page is the most visible
-                if (entry.intersectionRatio > 0.5) {
-                  setCurrentPage(pageNum);
-                  setCurrentPdfPage(pageNum);
+              // Render page if not already rendered
+              if (!renderedPages.current.has(pageNum)) {
+                const wrapper = pageRefs.current[pageNum - 1];
+                const canvas = wrapper?.querySelector('canvas');
+                if (canvas) {
+                  renderedPages.current.add(pageNum);
+                  renderPDFPage(pdfDoc, pageNum, canvas, { scale: 1.5 }).catch(err => {
+                    console.error(`Error rendering page ${pageNum}`, err);
+                    renderedPages.current.delete(pageNum);
+                  });
                 }
               }
-            });
-          },
-          {
-            root: containerRef.current,
-            threshold: [0.1, 0.5, 0.9],
-            rootMargin: '200px' // Pre-load pages before they come into view
-          }
-        );
 
-        pageRefs.current.forEach((el) => {
-          if (el) observerRef.current?.observe(el);
-        });
+              // Update current page if this page is the most visible
+              if (entry.intersectionRatio > 0.5) {
+                setCurrentPage(pageNum);
+                setCurrentPdfPage(pageNum);
+              }
+            }
+          });
+        },
+        {
+          root: containerRef.current,
+          threshold: [0.1, 0.5, 0.9],
+          rootMargin: '200px'
+        }
+      );
 
-        if (renderedPages.current.size === 0 && pageRefs.current[0]) {
-          const canvas = pageRefs.current[0].querySelector('canvas');
-          if (canvas) {
-            renderedPages.current.add(1);
-            renderPDFPage(pdfDoc, 1, canvas, { scale: 1.5 })
-              .catch(err => {
-                console.error(`Error rendering page 1`, err);
-                renderedPages.current.delete(1);
+      pageRefs.current.forEach((el) => {
+        if (el) observerRef.current?.observe(el);
+      });
+
+      // Force render first 3 pages after a delay to ensure DOM is ready
+      setTimeout(() => {
+        const pagesToRenderImmediately = Math.min(3, totalPages);
+        for (let i = 1; i <= pagesToRenderImmediately; i++) {
+          if (!renderedPages.current.has(i) && pageRefs.current[i - 1]) {
+            const canvas = pageRefs.current[i - 1].querySelector('canvas');
+            if (canvas && document.contains(canvas)) {
+              renderedPages.current.add(i);
+              renderPDFPage(pdfDoc, i, canvas, { scale: 1.5 }).catch(err => {
+                console.error(`Error rendering page ${i}`, err);
+                renderedPages.current.delete(i);
               });
+            }
           }
         }
+      }, 150);
       }, 100);
 
       return () => {
@@ -282,7 +295,7 @@ export function MainWorkspace({ selectedTool, onClearTool }: MainWorkspaceProps)
       observerRef.current?.disconnect();
       observerRef.current = null;
     };
-  }, [pdfDoc, totalPages, isPDF, selectedTool, hasFileTypeMismatch]);
+  }, [pdfDoc, totalPages, isPDF, selectedTool, hasFileTypeMismatch, file?.id]);
 
   // Preserve current page when exiting custom tools
   useEffect(() => {

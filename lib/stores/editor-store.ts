@@ -383,11 +383,19 @@ export const useEditorStore = create<EditorState>()(
       },
 
       updateFileData: (fileId, data) => {
+        console.log('[EditorStore] updateFileData called:', { fileId, dataSize: data instanceof Blob ? data.size : 'unknown' });
         set((state) => {
           const file = state.files.get(fileId);
           if (!file) {
+            console.error('[EditorStore] File not found:', fileId);
             return state;
           }
+
+          console.log('[EditorStore] Current file:', { 
+            name: file.name, 
+            oldSize: file.originalFile instanceof Blob ? file.originalFile.size : 'unknown',
+            oldPreviewUrl: file.previewUrl
+          });
 
           // Save current state to history before updating
           const currentBlob = file.data instanceof Blob ? file.data : new Blob([file.data], { type: file.type });
@@ -409,6 +417,12 @@ export const useEditorStore = create<EditorState>()(
           const blob = data instanceof Blob ? data : new Blob([data], { type: file.type });
           const newPreviewUrl = URL.createObjectURL(blob);
 
+          console.log('[EditorStore] New file data:', {
+            newSize: blob.size,
+            newPreviewUrl: newPreviewUrl,
+            type: blob.type
+          });
+
           const updatedFile = {
             ...file,
             data,
@@ -418,6 +432,8 @@ export const useEditorStore = create<EditorState>()(
           };
           const newFiles = new Map(state.files);
           newFiles.set(fileId, updatedFile);
+
+          console.log('[EditorStore] Updating store with new files Map');
 
           return { 
             files: newFiles,

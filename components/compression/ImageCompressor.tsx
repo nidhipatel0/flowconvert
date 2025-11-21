@@ -64,8 +64,8 @@ export function ImageCompressor(): JSX.Element {
         allowNoiseReduction: true,
         tolerancePercent: 5,
         onProgress: (tier, message, progress) => {
-          setProgress({
-            status: 'compressing',
+      setProgress({
+        status: 'compressing',
             progress,
             message: `Tier ${tier}: ${message}`,
             currentStep: message,
@@ -81,7 +81,7 @@ export function ImageCompressor(): JSX.Element {
 
       setResult(compressionResult);
       setCurrentResult(compressionResult);
-      
+
       if (compressionResult.success) {
         setStatus('complete');
         setProgress({
@@ -191,12 +191,12 @@ export function ImageCompressor(): JSX.Element {
               ) : (
                 <div className="text-center">
                   <FileArchive className="mx-auto h-24 w-24 text-muted-foreground mb-4" />
-                  <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
                     PDF compressed successfully. Use sidebar to download.
-                  </p>
-                </div>
+            </p>
+          </div>
               )}
-            </div>
+        </div>
           </div>
         ) : (
           <div className="bg-card border border-border rounded-lg p-6">
